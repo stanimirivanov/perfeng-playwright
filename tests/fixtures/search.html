@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Search fixture</title>
+  </head>
+  <body>
+    <main>
+      <h1>Search</h1>
+      <form id="search-form">
+        <label for="query">Query</label>
+        <input id="query" name="query" value="performance" />
+        <button id="search" type="submit">Search</button>
+      </form>
+      <section id="results" aria-live="polite" hidden></section>
+    </main>
+    <script>
+      const form = document.querySelector('#search-form');
+      const results = document.querySelector('#results');
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        performance.mark('search.started');
+        window.setTimeout(() => {
+          results.textContent = 'One deterministic result';
+          results.hidden = false;
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              performance.mark('search.results-visible');
+              performance.measure(
+                'search.action-to-visible',
+                'search.started',
+                'search.results-visible',
+              );
+            }),
+          );
+        }, 25);
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,57 @@
+# perfeng-playwright
+
+Standalone Playwright performance runner and browser-side semantic timing
+library. This repository owns browser journeys, browser execution, and raw
+browser measurements. Scheduling, run lifecycle, artifact storage,
+normalization, and performance verdicts belong to their respective platform
+components.
+
+## Development
+
+Use Node.js 24.18.0 and the pinned pnpm version. Install the Chromium build
+managed by the pinned Playwright package, then run the complete validation:
+
+```sh
+corepack enable
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
+pnpm validate
+```
+
+Validation checks formatting, linting, strict TypeScript compilation, the
+distributable library build, and browser behavior. Failed browser tests retain
+traces, screenshots, and video in ignored local output directories; CI uploads
+that evidence only when validation fails.
+
+## Semantic measurements
+
+`measureInteraction` returns a metric name and duration compatible with the
+`playwright-measurements-json` raw payload. Both strategies use the browser's
+high-resolution Performance clock:
+
+- `instrumented` reads a named `PerformanceMeasure` emitted from
+  application-owned semantic start and completion marks.
+- `black-box` records a browser DOM event, observes a semantic completion
+  element, verifies visibility, and waits for a configured number of animation
+  frames before completing.
+
+Black-box measurement rejects completion elements that were already visible
+before the interaction. This avoids recording stale UI as successful work.
+Application-assisted instrumentation remains preferred when the application can
+identify the true semantic completion point. Both initial strategies are scoped
+to one document; journeys that navigate must establish timing in the destination
+application rather than treating controller or navigation latency as a browser
+semantic measure.
+
+The included search page is a deterministic test fixture for the timing
+library, not a production benchmark or a claimed latency baseline. Cold/warm
+profiles, repeatable journey execution, browser metadata, contract-valid raw
+artifact creation, and the runner container are separate implementation steps.
+
+## Prototype boundary
+
+The original `tests/playwright` directory contained generated Nx configuration
+and one placeholder title assertion. This repository does not retain Nx or the
+placeholder because neither defines useful performance behavior. The initial
+commit in this repository remains its history boundary; no orchestration or
+monorepo configuration is copied here.
