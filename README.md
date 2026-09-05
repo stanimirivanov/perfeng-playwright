@@ -43,10 +43,22 @@ to one document; journeys that navigate must establish timing in the destination
 application rather than treating controller or navigation latency as a browser
 semantic measure.
 
+`runJourney` executes warm-up and measurement repetitions with explicit cache
+semantics. Warm profiles reuse one browser context; cold profiles create one
+context per iteration. It records the pinned Playwright runtime, actual browser
+version, platform, architecture, viewport, and headless mode in a
+`playwright-measurements/v1` payload. Warm-up observations are validated and
+discarded. Every measured metric must occur exactly once per iteration.
+
+`writeMeasurementArtifact` writes the payload once as deterministic UTF-8 JSON
+and returns its SHA-256 and byte count for a `raw-result/v1` reference. Existing
+paths are never overwritten. Upload and manifest registration remain storage
+and control-plane responsibilities.
+
 The included search page is a deterministic test fixture for the timing
-library, not a production benchmark or a claimed latency baseline. Cold/warm
-profiles, repeatable journey execution, browser metadata, contract-valid raw
-artifact creation, and the runner container are separate implementation steps.
+library and journey executor, not a production benchmark or claimed latency
+baseline. A deployment CLI and runner container remain separate implementation
+steps.
 
 ## Prototype boundary
 
