@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import type { Page } from '@playwright/test';
 
-const metricNamePattern = /^ui\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*_ms$/;
+import { assertMetricName } from './metric-name.js';
+
 const defaultTimeoutMs = 5_000;
 
 /** One browser-clock duration ready for the Playwright measurement artifact. */
@@ -47,9 +48,7 @@ type BrowserScope = typeof globalThis & {
 };
 
 function validateOptions(options: InteractionOptions): number {
-  if (!metricNamePattern.test(options.metricName)) {
-    throw new Error(`Invalid interaction metric name: ${options.metricName}`);
-  }
+  assertMetricName(options.metricName);
   const timeoutMs = options.timeoutMs ?? defaultTimeoutMs;
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) {
     throw new Error('timeoutMs must be an integer from 1 through 60000');
