@@ -5,6 +5,7 @@ import {
   startPageObservation,
 } from '../observation/observe-page.js';
 import type { PageObservation } from '../observation/types.js';
+import { captureSmoothnessTrace } from '../smoothness/capture.js';
 import { capturePerformanceTrace } from '../trace/capture.js';
 import type { IterationPerformanceTrace, RunJourneyOptions } from './types.js';
 
@@ -43,13 +44,17 @@ export async function executeIteration(
   if (options.diagnosticMode === 'lightweight') {
     return observedIteration(page, options.journey);
   }
+  let traceCollector: typeof capturePerformanceTrace | undefined;
+  if (options.diagnosticMode === 'trace') {
+    traceCollector = capturePerformanceTrace;
+  } else if (options.diagnosticMode === 'smoothness') {
+    traceCollector = captureSmoothnessTrace;
+  }
   if (
-    options.diagnosticMode === 'trace' &&
+    traceCollector !== undefined &&
     options.captureIterations?.[0] === iteration
   ) {
-    const capture = await capturePerformanceTrace(page, () =>
-      options.journey(page),
-    );
+    const capture = await traceCollector(page, () => options.journey(page));
     return {
       measurements: capture.result,
       trace: { iteration, ...capture.trace },

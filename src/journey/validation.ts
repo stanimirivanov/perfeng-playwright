@@ -11,6 +11,7 @@ const diagnosticModes = new Set<string>([
   'lightweight',
   'trace',
   'memory',
+  'smoothness',
 ]);
 const workloadProfiles = new Set<WorkloadProfile>([
   'smoke',
@@ -84,9 +85,13 @@ export function validateRunJourneyOptions(
   }
   assertInteger('warmupIterations', options.warmupIterations, 0);
   assertInteger('measurementIterations', options.measurementIterations, 1);
-  if (options.diagnosticMode === 'trace') {
+  if (
+    options.diagnosticMode === 'trace' ||
+    options.diagnosticMode === 'smoothness'
+  ) {
+    const name = options.diagnosticMode === 'trace' ? 'Trace' : 'Smoothness';
     if (options.captureIterations?.length !== 1) {
-      throw new Error('Trace mode requires exactly one capture iteration');
+      throw new Error(`${name} mode requires exactly one capture iteration`);
     }
     const [iteration] = options.captureIterations;
     if (
@@ -95,7 +100,7 @@ export function validateRunJourneyOptions(
       iteration < 1 ||
       iteration > options.measurementIterations
     ) {
-      throw new Error('Trace mode must select one measured iteration');
+      throw new Error(`${name} mode must select one measured iteration`);
     }
   } else if (options.diagnosticMode === 'memory') {
     if (options.cacheProfile !== 'warm' || options.pageReuse !== 'per-run') {
@@ -131,7 +136,7 @@ export function validateRunJourneyOptions(
     }
   } else if (options.captureIterations !== undefined) {
     throw new Error(
-      'Capture iterations are only supported for trace and memory modes',
+      'Capture iterations are only supported for trace, memory, and smoothness modes',
     );
   }
   const viewport = options.viewport ?? { width: 1280, height: 720 };

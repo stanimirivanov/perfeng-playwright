@@ -73,6 +73,15 @@ test('accepts supported diagnostics with explicit capture selections', () => {
     parseRunnerConfiguration(
       JSON.stringify({
         ...valid,
+        diagnosticMode: 'smoothness',
+        diagnostics: { captureIterations: [1] },
+      }),
+    ).diagnostics,
+  ).toEqual({ captureIterations: [1] });
+  expect(
+    parseRunnerConfiguration(
+      JSON.stringify({
+        ...valid,
         scenario: {
           ...valid.scenario,
           pageReuse: 'per-run',
@@ -89,7 +98,7 @@ test('accepts supported diagnostics with explicit capture selections', () => {
 test('rejects unsupported and invalid diagnostic selections', () => {
   expect(() =>
     parseRunnerConfiguration(
-      JSON.stringify({ ...valid, diagnosticMode: 'smoothness' }),
+      JSON.stringify({ ...valid, diagnosticMode: 'unsupported' }),
     ),
   ).toThrow('Unsupported diagnostic mode');
   expect(() =>
@@ -97,6 +106,20 @@ test('rejects unsupported and invalid diagnostic selections', () => {
       JSON.stringify({ ...valid, diagnosticMode: 'trace' }),
     ),
   ).toThrow('requires diagnostics.captureIterations');
+  expect(() =>
+    parseRunnerConfiguration(
+      JSON.stringify({ ...valid, diagnosticMode: 'smoothness' }),
+    ),
+  ).toThrow('requires diagnostics.captureIterations');
+  expect(() =>
+    parseRunnerConfiguration(
+      JSON.stringify({
+        ...valid,
+        diagnosticMode: 'smoothness',
+        diagnostics: { captureIterations: [1, 2] },
+      }),
+    ),
+  ).toThrow('must contain exactly one iteration');
   for (const captureIterations of [[], [1, 2], [0], [3]]) {
     expect(() =>
       parseRunnerConfiguration(
@@ -115,7 +138,7 @@ test('rejects unsupported and invalid diagnostic selections', () => {
         diagnostics: { captureIterations: [1] },
       }),
     ),
-  ).toThrow('only supported for trace and memory modes');
+  ).toThrow('only supported for trace, memory, and smoothness modes');
 });
 
 test('requires a repeated warm page lifecycle for memory diagnostics', () => {

@@ -9,6 +9,7 @@ import {
   runJourney,
   writeJourneyArtifacts,
   writeMeasurementArtifact,
+  type DiagnosticMode,
   type RunJourneyOptions,
 } from '../src/index.js';
 
@@ -173,11 +174,11 @@ test('rejects a page lifetime that outlives a cold context', async () => {
   );
 });
 
-test('rejects unimplemented diagnostic modes before launching a browser', async () => {
+test('rejects unknown diagnostic modes before launching a browser', async () => {
   const invalid = options('warm', [], new Set());
-  invalid.diagnosticMode = 'smoothness';
+  invalid.diagnosticMode = 'unsupported' as DiagnosticMode;
   await expect(captureJourney(chromium, invalid)).rejects.toThrow(
-    'Unsupported diagnostic mode: smoothness',
+    'Unsupported diagnostic mode: unsupported',
   );
 });
 
@@ -210,6 +211,19 @@ test('requires trace selection to identify one measured iteration', async () => 
   diagnostic.captureIterations = [3];
   await expect(captureJourney(chromium, diagnostic)).rejects.toThrow(
     'must select one measured iteration',
+  );
+});
+
+test('requires smoothness selection to identify one measured iteration', async () => {
+  const diagnostic = options('warm', [], new Set());
+  diagnostic.diagnosticMode = 'smoothness';
+
+  await expect(captureJourney(chromium, diagnostic)).rejects.toThrow(
+    'Smoothness mode requires exactly one capture iteration',
+  );
+  diagnostic.captureIterations = [3];
+  await expect(captureJourney(chromium, diagnostic)).rejects.toThrow(
+    'Smoothness mode must select one measured iteration',
   );
 });
 
@@ -268,6 +282,23 @@ test('captures a trace only around the selected measured iteration', async () =>
     Date.parse(capture.trace?.finishedAt ?? ''),
   );
   expect(capture.observations).toBeUndefined();
+});
+
+test('captures rendering evidence only around the selected iteration', async () => {
+  const diagnostic = options('warm', [], new Set());
+  diagnostic.diagnosticMode = 'smoothness';
+  diagnostic.captureIterations = [2];
+
+  const capture = await captureJourney(chromium, diagnostic);
+
+  expect(capture.measurements.diagnosticMode).toBe('smoothness');
+  expect(capture.trace?.iteration).toBe(2);
+  expect(capture.trace?.format).toBe('chrome-trace-json-gzip');
+  expect(capture.trace?.bytes.subarray(0, 2)).toEqual(
+    Buffer.from([0x1f, 0x8b]),
+  );
+  expect(capture.observations).toBeUndefined();
+  expect(capture.memory).toBeUndefined();
 });
 
 test('captures and writes memory evidence around repeated same-page iterations', async ({}, testInfo) => {
