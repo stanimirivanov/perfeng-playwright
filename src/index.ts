@@ -37,3 +37,9 @@ export {
   startPageObservation,
 } from './observation/observe-page.js';
 export type { PageObservation } from './observation/types.js';
+export { capturePerformanceTrace } from './trace/capture.js';
+export type {
+  PerformanceTrace,
+  TraceCapture,
+  TraceCaptureOptions,
+} from './trace/types.js';
