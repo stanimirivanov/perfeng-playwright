@@ -4,7 +4,7 @@ import { parseCommand } from '../src/cli.js';
 import { parseRunnerConfiguration } from '../src/configuration.js';
 
 const valid = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   runId: 'perf-20260902-130000-a1b2c3d5',
   testId: 'search-browser',
   workload: {
@@ -15,8 +15,14 @@ const valid = {
   },
   scenario: {
     cacheProfile: 'warm',
+    pageReuse: 'per-iteration',
     warmupIterations: 1,
     measurementIterations: 2,
+  },
+  diagnosticMode: 'baseline',
+  environment: {
+    profile: { id: 'windows-mainstream', version: '1.0.0' },
+    fingerprint: 'f'.repeat(64),
   },
   target: { baseUrl: 'http://127.0.0.1:4173/' },
   browser: {
@@ -46,6 +52,26 @@ test('rejects unknown configuration and unsafe target URL fields', () => {
       ),
     ).toThrow('target.baseUrl');
   }
+});
+
+test('rejects unsupported diagnostics and impossible page lifetime', () => {
+  expect(() =>
+    parseRunnerConfiguration(
+      JSON.stringify({ ...valid, diagnosticMode: 'trace' }),
+    ),
+  ).toThrow('Unsupported diagnostic mode');
+  expect(() =>
+    parseRunnerConfiguration(
+      JSON.stringify({
+        ...valid,
+        scenario: {
+          ...valid.scenario,
+          cacheProfile: 'cold',
+          pageReuse: 'per-run',
+        },
+      }),
+    ),
+  ).toThrow('Cold cache profile requires per-iteration page reuse');
 });
 
 test('requires an unambiguous command line', () => {

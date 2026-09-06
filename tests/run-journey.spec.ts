@@ -14,6 +14,7 @@ function options(
   cacheProfile: RunJourneyOptions['cacheProfile'],
   cacheObservations: boolean[],
   contexts: Set<object>,
+  pages: Set<object> = new Set<object>(),
 ): RunJourneyOptions {
   return {
     runId: 'perf-20260902-130000-a1b2c3d5',
@@ -25,10 +26,17 @@ function options(
       sha256: 'd'.repeat(64),
     },
     cacheProfile,
+    pageReuse: 'per-iteration',
+    diagnosticMode: 'baseline',
+    environment: {
+      profile: { id: 'windows-mainstream', version: '1.0.0' },
+      fingerprint: 'f'.repeat(64),
+    },
     warmupIterations: 1,
     measurementIterations: 2,
     journey: async (page) => {
       contexts.add(page.context());
+      pages.add(page);
       await page.goto('/');
       cacheObservations.push(
         await page.evaluate(() => {
@@ -53,16 +61,19 @@ function options(
 test('reuses one context and discards warm-up measurements for a warm profile', async () => {
   const cacheObservations: boolean[] = [];
   const contexts = new Set<object>();
+  const pages = new Set<object>();
   const payload = await runJourney(
     chromium,
-    options('warm', cacheObservations, contexts),
+    options('warm', cacheObservations, contexts, pages),
   );
 
   expect(cacheObservations).toEqual([false, true, true]);
   expect(contexts.size).toBe(1);
+  expect(pages.size).toBe(3);
   expect(payload.scenario).toEqual({
     cacheProfile: 'warm',
     contextReuse: 'per-run',
+    pageReuse: 'per-iteration',
     warmupIterations: 1,
     measurementIterations: 2,
   });
@@ -72,6 +83,24 @@ test('reuses one context and discards warm-up measurements for a warm profile', 
   expect(payload.measurements.every(({ durationMs }) => durationMs > 0)).toBe(
     true,
   );
+});
+
+test('can reuse one page for warm stateful scenarios', async () => {
+  const cacheObservations: boolean[] = [];
+  const contexts = new Set<object>();
+  const pages = new Set<object>();
+  const runOptions = options('warm', cacheObservations, contexts, pages);
+  runOptions.pageReuse = 'per-run';
+
+  const payload = await runJourney(chromium, runOptions);
+
+  expect(cacheObservations).toEqual([false, true, true]);
+  expect(contexts.size).toBe(1);
+  expect(pages.size).toBe(1);
+  expect(payload.schemaVersion).toBe(2);
+  expect(payload.scenario.pageReuse).toBe('per-run');
+  expect(payload.diagnosticMode).toBe('baseline');
+  expect(payload.environment).toEqual(runOptions.environment);
 });
 
 test('uses an isolated context for every cold-profile iteration', async () => {
@@ -85,6 +114,7 @@ test('uses an isolated context for every cold-profile iteration', async () => {
   expect(cacheObservations).toEqual([false, false, false]);
   expect(contexts.size).toBe(3);
   expect(payload.scenario.contextReuse).toBe('per-iteration');
+  expect(payload.scenario.pageReuse).toBe('per-iteration');
   expect(payload.browser.name).toBe('chromium');
   expect(payload.browser.version).not.toHaveLength(0);
   expect(payload.runtime.playwrightVersion).toBe('1.62.1');
@@ -124,6 +154,22 @@ test('rejects invalid contract identity before launching a browser', async () =>
   const invalid = options('warm', [], new Set());
   invalid.runId = 'run-1';
   await expect(runJourney(chromium, invalid)).rejects.toThrow('Invalid run ID');
+});
+
+test('rejects a page lifetime that outlives a cold context', async () => {
+  const invalid = options('cold', [], new Set());
+  invalid.pageReuse = 'per-run';
+  await expect(runJourney(chromium, invalid)).rejects.toThrow(
+    'Cold cache profile requires per-iteration page reuse',
+  );
+});
+
+test('rejects unimplemented diagnostic modes before launching a browser', async () => {
+  const invalid = options('warm', [], new Set());
+  invalid.diagnosticMode = 'trace';
+  await expect(runJourney(chromium, invalid)).rejects.toThrow(
+    'Unsupported diagnostic mode: trace',
+  );
 });
 
 test('writes immutable deterministic artifact bytes and reports integrity', async ({}, testInfo) => {
