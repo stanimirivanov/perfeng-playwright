@@ -11,8 +11,9 @@ performance changes.
 Use browser-side timing for measured intervals. Controller-side timestamps may
 be used for diagnostics, never as the authoritative interaction duration.
 Define semantic completion explicitly and keep cold and warm samples in
-separate profiles. Tests must use systems the contributor owns or is authorized
-to exercise.
+separate profiles. Keep baseline timings separate from diagnostic runs, and do
+not claim a diagnostic mode until its evidence collector is implemented. Tests
+must use systems the contributor owns or is authorized to exercise.
 
 Comments should explain contracts and non-obvious invariants. Do not add lint
 suppression comments or comments that merely restate the code.

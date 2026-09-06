@@ -18,6 +18,8 @@ const runIdPattern = /^perf-[0-9]{8}-[0-9]{6}-[a-f0-9]{8}$/;
 const versionPattern = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
 const cacheProfiles = new Set<string>(['cold', 'warm']);
+const pageReusePolicies = new Set<string>(['per-iteration', 'per-run']);
+const diagnosticModes = new Set<string>(['baseline']);
 const workloadProfiles = new Set<WorkloadProfile>([
   'smoke',
   'average',
@@ -33,6 +35,9 @@ const playwrightPackage = createRequire(import.meta.url)(
 };
 
 export type CacheProfile = 'cold' | 'warm';
+export type PageReuse = 'per-iteration' | 'per-run';
+export type DiagnosticMode =
+  'baseline' | 'lightweight' | 'trace' | 'memory' | 'smoothness';
 export type WorkloadProfile =
   'smoke' | 'average' | 'regression' | 'stress' | 'capacity' | 'soak';
 
@@ -48,11 +53,22 @@ export interface Viewport {
   height: number;
 }
 
+export interface EnvironmentIdentity {
+  profile: {
+    id: string;
+    version: string;
+  };
+  fingerprint: string;
+}
+
 export interface RunJourneyOptions {
   runId: string;
   testId: string;
   workload: WorkloadIdentity;
   cacheProfile: CacheProfile;
+  pageReuse: PageReuse;
+  diagnosticMode: DiagnosticMode;
+  environment: EnvironmentIdentity;
   warmupIterations: number;
   measurementIterations: number;
   journey: (page: Page) => Promise<InteractionMeasurement[]>;
@@ -66,7 +82,7 @@ export interface PlaywrightMeasurement extends InteractionMeasurement {
 }
 
 export interface PlaywrightMeasurements {
-  schemaVersion: 1;
+  schemaVersion: 2;
   kind: 'PlaywrightMeasurements';
   runId: string;
   testId: string;
@@ -74,9 +90,12 @@ export interface PlaywrightMeasurements {
   scenario: {
     cacheProfile: CacheProfile;
     contextReuse: 'per-iteration' | 'per-run';
+    pageReuse: PageReuse;
     warmupIterations: number;
     measurementIterations: number;
   };
+  diagnosticMode: DiagnosticMode;
+  environment: EnvironmentIdentity;
   runtime: {
     playwrightVersion: string;
     nodeVersion: string;
@@ -132,6 +151,29 @@ function validateOptions(options: RunJourneyOptions): void {
   }
   if (!cacheProfiles.has(options.cacheProfile)) {
     throw new Error(`Invalid cache profile: ${options.cacheProfile}`);
+  }
+  if (!pageReusePolicies.has(options.pageReuse)) {
+    throw new Error(`Invalid page reuse policy: ${options.pageReuse}`);
+  }
+  if (
+    options.cacheProfile === 'cold' &&
+    options.pageReuse !== 'per-iteration'
+  ) {
+    throw new Error('Cold cache profile requires per-iteration page reuse');
+  }
+  if (!diagnosticModes.has(options.diagnosticMode)) {
+    throw new Error(`Unsupported diagnostic mode: ${options.diagnosticMode}`);
+  }
+  if (!idPattern.test(options.environment.profile.id)) {
+    throw new Error(
+      `Invalid environment profile ID: ${options.environment.profile.id}`,
+    );
+  }
+  if (!versionPattern.test(options.environment.profile.version)) {
+    throw new Error('Invalid environment profile version');
+  }
+  if (!sha256Pattern.test(options.environment.fingerprint)) {
+    throw new Error('Invalid environment fingerprint');
   }
   assertInteger('warmupIterations', options.warmupIterations, 0);
   assertInteger('measurementIterations', options.measurementIterations, 1);
@@ -215,6 +257,14 @@ async function executeInContext(
   }
 }
 
+async function executeOnPage(
+  page: Page,
+  journey: RunJourneyOptions['journey'],
+  expectedNames: string[] | undefined,
+): Promise<{ measurements: InteractionMeasurement[]; names: string[] }> {
+  return validateMeasurements(await journey(page), expectedNames);
+}
+
 async function withNewContext<T>(
   browser: Browser,
   viewport: Viewport,
@@ -229,7 +279,7 @@ async function withNewContext<T>(
   }
 }
 
-/** Executes warm-up and measured repetitions and returns a v1 native payload. */
+/** Executes warm-up and measured repetitions and returns a v2 native payload. */
 export async function runJourney(
   browserType: BrowserType,
   options: RunJourneyOptions,
@@ -245,14 +295,13 @@ export async function runJourney(
   let end: Date;
 
   const execute = async (
-    context: BrowserContext,
+    target: BrowserContext | Page,
     iteration?: number,
   ): Promise<void> => {
-    const result = await executeInContext(
-      context,
-      options.journey,
-      expectedNames,
-    );
+    const result =
+      'newPage' in target
+        ? await executeInContext(target, options.journey, expectedNames)
+        : await executeOnPage(target, options.journey, expectedNames);
     expectedNames = result.names;
     if (iteration !== undefined) {
       collected.push(
@@ -268,18 +317,24 @@ export async function runJourney(
     if (options.cacheProfile === 'warm') {
       const context = await browser.newContext({ viewport, deviceScaleFactor });
       try {
-        for (let index = 0; index < options.warmupIterations; index += 1) {
-          await execute(context);
+        const page =
+          options.pageReuse === 'per-run' ? await context.newPage() : undefined;
+        try {
+          for (let index = 0; index < options.warmupIterations; index += 1) {
+            await execute(page ?? context);
+          }
+          start = new Date();
+          for (
+            let iteration = 1;
+            iteration <= options.measurementIterations;
+            iteration += 1
+          ) {
+            await execute(page ?? context, iteration);
+          }
+          end = new Date();
+        } finally {
+          await page?.close();
         }
-        start = new Date();
-        for (
-          let iteration = 1;
-          iteration <= options.measurementIterations;
-          iteration += 1
-        ) {
-          await execute(context, iteration);
-        }
-        end = new Date();
       } finally {
         await context.close();
       }
@@ -309,7 +364,7 @@ export async function runJourney(
     }
 
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: 'PlaywrightMeasurements',
       runId: options.runId,
       testId: options.testId,
@@ -318,8 +373,14 @@ export async function runJourney(
         cacheProfile: options.cacheProfile,
         contextReuse:
           options.cacheProfile === 'warm' ? 'per-run' : 'per-iteration',
+        pageReuse: options.pageReuse,
         warmupIterations: options.warmupIterations,
         measurementIterations: options.measurementIterations,
+      },
+      diagnosticMode: options.diagnosticMode,
+      environment: {
+        profile: { ...options.environment.profile },
+        fingerprint: options.environment.fingerprint,
       },
       runtime: {
         playwrightVersion: playwrightPackage.version,

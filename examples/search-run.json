@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "runId": "perf-20260902-130000-a1b2c3d5",
   "testId": "search-browser",
   "workload": {
@@ -10,8 +10,17 @@
   },
   "scenario": {
     "cacheProfile": "warm",
+    "pageReuse": "per-iteration",
     "warmupIterations": 2,
     "measurementIterations": 10
+  },
+  "diagnosticMode": "baseline",
+  "environment": {
+    "profile": {
+      "id": "windows-mainstream",
+      "version": "1.0.0"
+    },
+    "fingerprint": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
   },
   "target": {
     "baseUrl": "http://127.0.0.1:4173/"

@@ -2,6 +2,9 @@ import { readFile } from 'node:fs/promises';
 
 import type {
   CacheProfile,
+  DiagnosticMode,
+  EnvironmentIdentity,
+  PageReuse,
   Viewport,
   WorkloadIdentity,
   WorkloadProfile,
@@ -17,17 +20,22 @@ const workloadProfiles = new Set<string>([
   'soak',
 ]);
 const cacheProfiles = new Set<string>(['cold', 'warm']);
+const pageReusePolicies = new Set<string>(['per-iteration', 'per-run']);
+const diagnosticModes = new Set<string>(['baseline']);
 
 export interface RunnerConfiguration {
-  schemaVersion: 1;
+  schemaVersion: 2;
   runId: string;
   testId: string;
   workload: WorkloadIdentity;
   scenario: {
     cacheProfile: CacheProfile;
+    pageReuse: PageReuse;
     warmupIterations: number;
     measurementIterations: number;
   };
+  diagnosticMode: DiagnosticMode;
+  environment: EnvironmentIdentity;
   target: {
     baseUrl: string;
   };
@@ -113,6 +121,7 @@ function scenario(value: unknown): RunnerConfiguration['scenario'] {
   const source = record(value, 'scenario');
   exactKeys(source, 'scenario', [
     'cacheProfile',
+    'pageReuse',
     'warmupIterations',
     'measurementIterations',
   ]);
@@ -120,8 +129,16 @@ function scenario(value: unknown): RunnerConfiguration['scenario'] {
   if (!cacheProfiles.has(cacheProfile)) {
     throw new Error(`Unsupported cache profile: ${cacheProfile}`);
   }
+  const pageReuse = string(source.pageReuse, 'scenario.pageReuse');
+  if (!pageReusePolicies.has(pageReuse)) {
+    throw new Error(`Unsupported page reuse policy: ${pageReuse}`);
+  }
+  if (cacheProfile === 'cold' && pageReuse !== 'per-iteration') {
+    throw new Error('Cold cache profile requires per-iteration page reuse');
+  }
   return {
     cacheProfile: cacheProfile as CacheProfile,
+    pageReuse: pageReuse as PageReuse,
     warmupIterations: integer(
       source.warmupIterations,
       'scenario.warmupIterations',
@@ -133,6 +150,28 @@ function scenario(value: unknown): RunnerConfiguration['scenario'] {
       1,
     ),
   };
+}
+
+function environment(value: unknown): EnvironmentIdentity {
+  const source = record(value, 'environment');
+  exactKeys(source, 'environment', ['profile', 'fingerprint']);
+  const profile = record(source.profile, 'environment.profile');
+  exactKeys(profile, 'environment.profile', ['id', 'version']);
+  return {
+    profile: {
+      id: string(profile.id, 'environment.profile.id'),
+      version: string(profile.version, 'environment.profile.version'),
+    },
+    fingerprint: string(source.fingerprint, 'environment.fingerprint'),
+  };
+}
+
+function diagnosticMode(value: unknown): DiagnosticMode {
+  const mode = string(value, 'diagnosticMode');
+  if (!diagnosticModes.has(mode)) {
+    throw new Error(`Unsupported diagnostic mode: ${mode}`);
+  }
+  return mode as DiagnosticMode;
 }
 
 function baseUrl(value: unknown): string {
@@ -195,18 +234,22 @@ export function parseRunnerConfiguration(text: string): RunnerConfiguration {
     'testId',
     'workload',
     'scenario',
+    'diagnosticMode',
+    'environment',
     'target',
     'browser',
   ]);
-  if (source.schemaVersion !== 1) {
+  if (source.schemaVersion !== 2) {
     throw new Error('Unsupported runner configuration schemaVersion');
   }
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     runId: string(source.runId, 'runId'),
     testId: string(source.testId, 'testId'),
     workload: workload(source.workload),
     scenario: scenario(source.scenario),
+    diagnosticMode: diagnosticMode(source.diagnosticMode),
+    environment: environment(source.environment),
     target: target(source.target),
     browser: browser(source.browser),
   };

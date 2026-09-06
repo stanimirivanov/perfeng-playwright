@@ -43,12 +43,22 @@ to one document; journeys that navigate must establish timing in the destination
 application rather than treating controller or navigation latency as a browser
 semantic measure.
 
-`runJourney` executes warm-up and measurement repetitions with explicit cache
-semantics. Warm profiles reuse one browser context; cold profiles create one
-context per iteration. It records the pinned Playwright runtime, actual browser
-version, platform, architecture, viewport, and headless mode in a
-`playwright-measurements/v1` payload. Warm-up observations are validated and
-discarded. Every measured metric must occur exactly once per iteration.
+`runJourney` executes warm-up and measurement repetitions with explicit cache,
+context, and page-lifetime semantics. Warm profiles reuse one browser context;
+cold profiles create one context and page per iteration. Warm profiles may
+either create a page per iteration or reuse one page for stateful SPA journeys.
+It records the pinned Playwright runtime, actual browser version, platform,
+architecture, viewport, headless mode, diagnostic mode, and caller-provided
+environment identity in a `playwright-measurements/v2` payload. Warm-up
+observations are validated and discarded. Every measured metric must occur
+exactly once per iteration.
+
+Only `baseline` diagnostic mode is executable in this release. Configurations
+requesting lightweight, trace, memory, or smoothness capture fail before the
+browser starts; later collectors must implement their evidence contracts before
+those modes can be accepted. The environment profile and fingerprint identify
+a separately captured `browser-environment/v1` artifact. This runner validates
+that identity but does not invent or probe host characteristics.
 
 `writeMeasurementArtifact` writes the payload once as deterministic UTF-8 JSON
 and returns its SHA-256 and byte count for a `raw-result/v1` reference. Existing
@@ -72,7 +82,7 @@ pnpm build
 pnpm run run -- run --config examples/search-run.json --output results/playwright-measurements.json
 ```
 
-The configuration is a closed, versioned JSON object. The target must be an
+The v2 configuration is a closed, versioned JSON object. The target must be an
 absolute HTTP or HTTPS URL without embedded credentials, query parameters, or
 fragments. Put authentication in a future credential adapter, never in this
 file. The output path must not already exist. On success the CLI prints only a
