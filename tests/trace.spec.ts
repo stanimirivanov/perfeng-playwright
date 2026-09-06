@@ -37,6 +37,9 @@ test('captures a gzip Chrome performance trace around one action', async ({
   expect(capture.trace.format).toBe('chrome-trace-json-gzip');
   expect(capture.trace.mediaType).toBe('application/gzip');
   expect(typeof capture.trace.dataLossOccurred).toBe('boolean');
+  expect(Date.parse(capture.trace.startedAt)).toBeLessThanOrEqual(
+    Date.parse(capture.trace.finishedAt),
+  );
   expect(trace.traceEvents.length).toBeGreaterThan(0);
   expect(
     trace.traceEvents.some(({ name }) => name === 'perfeng.trace.action'),

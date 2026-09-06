@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
+import { gunzipSync } from 'node:zlib';
 
 import { expect, test } from '@playwright/test';
 
@@ -7,7 +8,7 @@ import { main } from '../src/cli.js';
 import { parseRunnerConfiguration, runSearchJourney } from '../src/index.js';
 
 function runnerConfiguration(
-  diagnosticMode: 'baseline' | 'lightweight' = 'baseline',
+  diagnosticMode: 'baseline' | 'lightweight' | 'trace' = 'baseline',
 ): object {
   return {
     schemaVersion: 2,
@@ -26,6 +27,9 @@ function runnerConfiguration(
       measurementIterations: 1,
     },
     diagnosticMode,
+    ...(diagnosticMode === 'trace'
+      ? { diagnostics: { captureIterations: [1] } }
+      : {}),
     environment: {
       profile: { id: 'windows-mainstream', version: '1.0.0' },
       fingerprint: 'f'.repeat(64),
@@ -131,4 +135,50 @@ test('writes lightweight observations independently from measurements', async ({
     measurements: integrity(measurementBytes),
     observations: integrity(observationBytes),
   });
+});
+
+test('writes a selected Chrome trace independently from measurements', async ({}, testInfo) => {
+  const configurationPath = testInfo.outputPath('trace-configuration.json');
+  const measurementPath = testInfo.outputPath(
+    'trace',
+    'playwright-measurements.json',
+  );
+  const tracePath = testInfo.outputPath('trace', 'chrome-trace.json.gz');
+  await writeFile(
+    configurationPath,
+    JSON.stringify(runnerConfiguration('trace')),
+    'utf8',
+  );
+
+  await expect(
+    main(['run', '--config', configurationPath, '--output', measurementPath]),
+  ).rejects.toThrow('require --trace-output');
+
+  const written = await main([
+    'run',
+    '--config',
+    configurationPath,
+    '--output',
+    measurementPath,
+    '--trace-output',
+    tracePath,
+  ]);
+  const measurementBytes = await readFile(measurementPath);
+  const traceBytes = await readFile(tracePath);
+  const trace = JSON.parse(gunzipSync(traceBytes).toString('utf8')) as {
+    traceEvents: unknown[];
+  };
+
+  expect(trace.traceEvents.length).toBeGreaterThan(0);
+  expect(written.measurements).toEqual(integrity(measurementBytes));
+  expect(written.trace).toMatchObject({
+    ...integrity(traceBytes),
+    iteration: 1,
+    format: 'chrome-trace-json-gzip',
+    mediaType: 'application/gzip',
+  });
+  expect(typeof written.trace?.dataLossOccurred).toBe('boolean');
+  expect(Date.parse(written.trace?.startedAt ?? '')).toBeLessThanOrEqual(
+    Date.parse(written.trace?.finishedAt ?? ''),
+  );
 });

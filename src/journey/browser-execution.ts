@@ -1,12 +1,10 @@
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 
-import {
-  finishPageObservation,
-  startPageObservation,
-} from '../observation/observe-page.js';
+import { executeIteration } from './iteration-execution.js';
 import { validateMeasurementSet } from './measurement-set.js';
 import type {
   IterationPageObservation,
+  IterationPerformanceTrace,
   PlaywrightMeasurement,
   RunJourneyOptions,
   Viewport,
@@ -15,6 +13,7 @@ import type {
 export interface JourneyExecution {
   measurements: PlaywrightMeasurement[];
   observations: IterationPageObservation[];
+  trace?: IterationPerformanceTrace;
   start: Date;
   end: Date;
 }
@@ -57,23 +56,13 @@ export async function executeJourney(
   let expectedNames: string[] | undefined;
   const collected: PlaywrightMeasurement[] = [];
   const observations: IterationPageObservation[] = [];
+  let trace: IterationPerformanceTrace | undefined;
   const execute = async (page: Page, iteration?: number): Promise<void> => {
-    const observe =
-      iteration !== undefined && options.diagnosticMode === 'lightweight';
-    if (observe) {
-      await startPageObservation(page);
-    }
-    let measurements: Awaited<ReturnType<RunJourneyOptions['journey']>>;
-    try {
-      measurements = await options.journey(page);
-    } catch (error) {
-      if (observe) {
-        await finishPageObservation(page).catch(() => undefined);
-      }
-      throw error;
-    }
-    const observation = observe ? await finishPageObservation(page) : undefined;
-    const result = validateMeasurementSet(measurements, expectedNames);
+    const execution = await executeIteration(page, options, iteration);
+    const result = validateMeasurementSet(
+      execution.measurements,
+      expectedNames,
+    );
     expectedNames = result.names;
     if (iteration !== undefined) {
       collected.push(
@@ -82,8 +71,14 @@ export async function executeJourney(
           iteration,
         })),
       );
-      if (observation !== undefined) {
-        observations.push({ iteration, observation });
+      if (execution.observation !== undefined) {
+        observations.push({ iteration, observation: execution.observation });
+      }
+      if (execution.trace !== undefined) {
+        if (trace !== undefined) {
+          throw new Error('Journey produced more than one performance trace');
+        }
+        trace = execution.trace;
       }
     }
   };
@@ -110,12 +105,16 @@ export async function executeJourney(
         ) {
           await run(iteration);
         }
-        return {
+        const execution: JourneyExecution = {
           measurements: collected,
           observations,
           start,
           end: new Date(),
         };
+        if (trace !== undefined) {
+          execution.trace = trace;
+        }
+        return execution;
       } finally {
         await page?.close();
       }
@@ -137,5 +136,14 @@ export async function executeJourney(
       executeInContext(context, iteration),
     );
   }
-  return { measurements: collected, observations, start, end: new Date() };
+  const execution: JourneyExecution = {
+    measurements: collected,
+    observations,
+    start,
+    end: new Date(),
+  };
+  if (trace !== undefined) {
+    execution.trace = trace;
+  }
+  return execution;
 }

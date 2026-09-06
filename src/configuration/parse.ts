@@ -1,4 +1,5 @@
 import { exactKeys, record, requiredString } from './primitives.js';
+import { parseDiagnostics } from './diagnostics.js';
 import {
   parseBrowser,
   parseDiagnosticMode,
@@ -17,7 +18,7 @@ export function parseRunnerConfiguration(text: string): RunnerConfiguration {
     throw new Error('Runner configuration must be valid JSON');
   }
   const source = record(decoded, 'configuration');
-  exactKeys(source, 'configuration', [
+  const keys = [
     'schemaVersion',
     'runId',
     'testId',
@@ -27,19 +28,34 @@ export function parseRunnerConfiguration(text: string): RunnerConfiguration {
     'environment',
     'target',
     'browser',
-  ]);
+  ];
+  if (source.diagnostics !== undefined) {
+    keys.push('diagnostics');
+  }
+  exactKeys(source, 'configuration', keys);
   if (source.schemaVersion !== 2) {
     throw new Error('Unsupported runner configuration schemaVersion');
   }
-  return {
+  const scenario = parseScenario(source.scenario);
+  const diagnosticMode = parseDiagnosticMode(source.diagnosticMode);
+  const diagnostics = parseDiagnostics(
+    source.diagnostics,
+    diagnosticMode,
+    scenario.measurementIterations,
+  );
+  const configuration: RunnerConfiguration = {
     schemaVersion: 2,
     runId: requiredString(source.runId, 'runId'),
     testId: requiredString(source.testId, 'testId'),
     workload: parseWorkload(source.workload),
-    scenario: parseScenario(source.scenario),
-    diagnosticMode: parseDiagnosticMode(source.diagnosticMode),
+    scenario,
+    diagnosticMode,
     environment: parseEnvironment(source.environment),
     target: parseTarget(source.target),
     browser: parseBrowser(source.browser),
   };
+  if (diagnostics !== undefined) {
+    configuration.diagnostics = diagnostics;
+  }
+  return configuration;
 }

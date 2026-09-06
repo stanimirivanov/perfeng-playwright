@@ -70,6 +70,7 @@ async function stopTrace(
   session: CDPSession,
   maxBytes: number,
   timeoutMs: number,
+  startedAt: string,
 ): Promise<PerformanceTrace> {
   const completion = waitForTraceCompletion(session, timeoutMs);
   let finished: TraceCompletion;
@@ -80,6 +81,7 @@ async function stopTrace(
     completion.cancel();
     throw error;
   }
+  const finishedAt = new Date().toISOString();
   if (finished.stream === undefined) {
     throw new Error('Chrome performance trace returned no stream');
   }
@@ -91,6 +93,8 @@ async function stopTrace(
     format: 'chrome-trace-json-gzip',
     mediaType: 'application/gzip',
     dataLossOccurred: finished.dataLossOccurred,
+    startedAt,
+    finishedAt,
     bytes,
   };
 }
@@ -125,6 +129,7 @@ export async function capturePerformanceTrace<T>(
         includedCategories: traceCategories,
       },
     });
+    const startedAt = new Date().toISOString();
     let result: T;
     try {
       result = await action();
@@ -133,6 +138,7 @@ export async function capturePerformanceTrace<T>(
         session,
         effective.maxBytes,
         effective.completionTimeoutMs,
+        startedAt,
       ).catch(() => undefined);
       throw error;
     }
@@ -140,6 +146,7 @@ export async function capturePerformanceTrace<T>(
       session,
       effective.maxBytes,
       effective.completionTimeoutMs,
+      startedAt,
     );
     return { result, trace };
   } finally {

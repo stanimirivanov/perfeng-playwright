@@ -54,17 +54,53 @@ test('rejects unknown configuration and unsafe target URL fields', () => {
   }
 });
 
-test('accepts lightweight capture and rejects unsupported diagnostics', () => {
+test('accepts lightweight and explicitly selected trace capture', () => {
   expect(
     parseRunnerConfiguration(
       JSON.stringify({ ...valid, diagnosticMode: 'lightweight' }),
     ).diagnosticMode,
   ).toBe('lightweight');
+  expect(
+    parseRunnerConfiguration(
+      JSON.stringify({
+        ...valid,
+        diagnosticMode: 'trace',
+        diagnostics: { captureIterations: [2] },
+      }),
+    ).diagnostics,
+  ).toEqual({ captureIterations: [2] });
+});
+
+test('rejects unsupported and invalid diagnostic selections', () => {
+  expect(() =>
+    parseRunnerConfiguration(
+      JSON.stringify({ ...valid, diagnosticMode: 'memory' }),
+    ),
+  ).toThrow('Unsupported diagnostic mode');
   expect(() =>
     parseRunnerConfiguration(
       JSON.stringify({ ...valid, diagnosticMode: 'trace' }),
     ),
-  ).toThrow('Unsupported diagnostic mode');
+  ).toThrow('requires diagnostics.captureIterations');
+  for (const captureIterations of [[], [1, 2], [0], [3]]) {
+    expect(() =>
+      parseRunnerConfiguration(
+        JSON.stringify({
+          ...valid,
+          diagnosticMode: 'trace',
+          diagnostics: { captureIterations },
+        }),
+      ),
+    ).toThrow('diagnostics.captureIterations');
+  }
+  expect(() =>
+    parseRunnerConfiguration(
+      JSON.stringify({
+        ...valid,
+        diagnostics: { captureIterations: [1] },
+      }),
+    ),
+  ).toThrow('only supported for trace mode');
 });
 
 test('rejects an impossible page lifetime', () => {
@@ -94,6 +130,21 @@ test('requires an unambiguous command line', () => {
   ).toEqual({
     configurationPath: 'configuration.json',
     outputPath: 'results/measurements.json',
+  });
+  expect(
+    parseCommand([
+      'run',
+      '--config',
+      'configuration.json',
+      '--output',
+      'results/measurements.json',
+      '--trace-output',
+      'results/trace.json.gz',
+    ]),
+  ).toEqual({
+    configurationPath: 'configuration.json',
+    outputPath: 'results/measurements.json',
+    traceOutputPath: 'results/trace.json.gz',
   });
   expect(
     parseCommand([

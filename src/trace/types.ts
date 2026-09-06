@@ -2,6 +2,8 @@ export interface PerformanceTrace {
   format: 'chrome-trace-json-gzip';
   mediaType: 'application/gzip';
   dataLossOccurred: boolean;
+  startedAt: string;
+  finishedAt: string;
   bytes: Buffer;
 }
 

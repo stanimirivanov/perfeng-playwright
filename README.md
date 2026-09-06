@@ -66,10 +66,10 @@ environment identity in a `playwright-measurements/v2` payload. Warm-up
 observations are validated and discarded. Every measured metric must occur
 exactly once per iteration.
 
-`baseline` and `lightweight` modes are executable. Trace, memory, and smoothness
-still fail before the browser starts; those modes remain unavailable until
-their CDP collectors implement the required evidence contracts. The environment
-profile and fingerprint identify a separately captured
+`baseline`, `lightweight`, and `trace` modes are executable. Memory and
+smoothness still fail before the browser starts; those modes remain unavailable
+until their collectors implement the required evidence contracts. The
+environment profile and fingerprint identify a separately captured
 `browser-environment/v1` artifact. This runner validates that identity but does
 not invent or probe host characteristics.
 
@@ -107,13 +107,19 @@ CDP session after successful captures, action failures, and output failures.
 
 Chrome traces are sensitive even though this preset does not request
 screenshots. They may contain URLs, script locations, function names, and User
-Timing values. The primitive is intentionally not yet wired to the runner's
-`trace` mode: explicit iteration selection and immutable trace artifact output
-must be added before that mode can be accepted.
+Timing values.
+
+Runner `trace` mode requires `diagnostics.captureIterations` to contain exactly
+one measured iteration. The selected journey is traced from its start through
+semantic completion; warm-ups and other measured iterations are not traced.
+The measurement payload remains separate from the raw gzip trace. Its integrity
+receipt includes the selected iteration, trace format, media type, capture
+window, and `dataLossOccurred` value so the surrounding platform can construct
+the later `browser-diagnostics/v1` manifest without guessing.
 
 `writeMeasurementArtifact` writes one payload as deterministic UTF-8 JSON.
 `writeJourneyArtifacts` reserves all requested destinations before writing the
-measurement and observation payloads, and removes only outputs it created if
+measurement and diagnostic payloads, and removes only outputs it created if
 the operation fails. Both return SHA-256 and byte-count integrity fields for
 `raw-result/v1` references. Existing paths are never overwritten. Upload and
 manifest registration remain storage and control-plane responsibilities.
@@ -142,12 +148,19 @@ immutable destinations:
 pnpm run run -- run --config examples/search-run.json --output results/playwright-measurements.json --observations-output results/browser-observations.json
 ```
 
+For a selected Chromium performance trace, use the trace configuration and a
+separate gzip destination:
+
+```sh
+pnpm run run -- run --config examples/search-trace-run.json --output results/playwright-measurements.json --trace-output results/chrome-trace.json.gz
+```
+
 The v2 configuration is a closed, versioned JSON object. The target must be an
 absolute HTTP or HTTPS URL without embedded credentials, query parameters, or
 fragments. Put authentication in a future credential adapter, never in this
 file. Output paths must be distinct and must not already exist. On success the
-CLI prints a JSON integrity receipt for the measurements and, when requested,
-the observations. Logs, the `browser-diagnostics/v1` manifest, upload, and
+CLI prints a JSON integrity receipt for the measurements and requested
+diagnostic evidence. Logs, the `browser-diagnostics/v1` manifest, upload, and
 artifact registration remain the caller's responsibility.
 
 The included search page is a deterministic test fixture for the timing
