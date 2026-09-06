@@ -65,12 +65,12 @@ environment identity in a `playwright-measurements/v2` payload. Warm-up
 observations are validated and discarded. Every measured metric must occur
 exactly once per iteration.
 
-Only `baseline` diagnostic mode is executable in this release. Configurations
-requesting lightweight, trace, memory, or smoothness capture fail before the
-browser starts; later collectors must implement their evidence contracts before
-those modes can be accepted. The environment profile and fingerprint identify
-a separately captured `browser-environment/v1` artifact. This runner validates
-that identity but does not invent or probe host characteristics.
+`baseline` and `lightweight` modes are executable. Trace, memory, and smoothness
+still fail before the browser starts; those modes remain unavailable until
+their CDP collectors implement the required evidence contracts. The environment
+profile and fingerprint identify a separately captured
+`browser-environment/v1` artifact. This runner validates that identity but does
+not invent or probe host characteristics.
 
 ## Lightweight page observations
 
@@ -81,17 +81,22 @@ long tasks, event timing, resource totals, JavaScript heap counters when the
 browser exposes them, and animation-frame intervals. Unsupported browser APIs
 remain explicit through `supportedEntryTypes` and nullable fields.
 
+In `lightweight` mode the journey executor captures one observation for every
+measured iteration. Warm-up activity is excluded. The CLI requires a separate
+`--observations-output` path and writes a `BrowserObservations` sidecar so
+diagnostic evidence is never embedded in the semantic measurement payload.
+
 Frame intervals over 50 ms are observations, not a claim that an exact number
 of frames was dropped. Resource timing also cannot identify every failed
 request or HTTP status. Network-event and precise rendering diagnosis remain
-CDP responsibilities. These observations are not yet wired to the runner's
-`lightweight` mode or artifact output; that boundary remains disabled until the
-runner can preserve the evidence independently from baseline measurements.
+CDP responsibilities.
 
-`writeMeasurementArtifact` writes the payload once as deterministic UTF-8 JSON
-and returns its SHA-256 and byte count for a `raw-result/v1` reference. Existing
-paths are never overwritten. Upload and manifest registration remain storage
-and control-plane responsibilities.
+`writeMeasurementArtifact` writes one payload as deterministic UTF-8 JSON.
+`writeJourneyArtifacts` reserves all requested destinations before writing the
+measurement and observation payloads, and removes only outputs it created if
+the operation fails. Both return SHA-256 and byte-count integrity fields for
+`raw-result/v1` references. Existing paths are never overwritten. Upload and
+manifest registration remain storage and control-plane responsibilities.
 
 ## Run the search journey
 
@@ -110,12 +115,20 @@ pnpm build
 pnpm run run -- run --config examples/search-run.json --output results/playwright-measurements.json
 ```
 
+For lightweight capture, set `diagnosticMode` to `lightweight` and provide both
+immutable destinations:
+
+```sh
+pnpm run run -- run --config examples/search-run.json --output results/playwright-measurements.json --observations-output results/browser-observations.json
+```
+
 The v2 configuration is a closed, versioned JSON object. The target must be an
 absolute HTTP or HTTPS URL without embedded credentials, query parameters, or
 fragments. Put authentication in a future credential adapter, never in this
-file. The output path must not already exist. On success the CLI prints only a
-JSON integrity receipt containing `sha256` and `sizeBytes`; logs and artifact
-registration remain the caller's responsibility.
+file. Output paths must be distinct and must not already exist. On success the
+CLI prints a JSON integrity receipt for the measurements and, when requested,
+the observations. Logs, the `browser-diagnostics/v1` manifest, upload, and
+artifact registration remain the caller's responsibility.
 
 The included search page is a deterministic test fixture for the timing
 library and journey executor, not a production benchmark or claimed latency

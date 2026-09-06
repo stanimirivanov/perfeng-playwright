@@ -1,5 +1,6 @@
 import type { BrowserType } from '@playwright/test';
 
+import { browserObservations } from '../observation/artifact.js';
 import { executeJourney } from './browser-execution.js';
 import {
   browserName,
@@ -7,14 +8,31 @@ import {
   runtimeArchitecture,
   runtimePlatform,
 } from './runtime.js';
-import type { PlaywrightMeasurements, RunJourneyOptions } from './types.js';
+import type {
+  JourneyCapture,
+  PlaywrightMeasurements,
+  RunJourneyOptions,
+} from './types.js';
 import { validateRunJourneyOptions } from './validation.js';
 
-/** Executes warm-up and measured repetitions and returns a v2 native payload. */
+/** Executes a baseline journey and returns its v2 semantic measurements. */
 export async function runJourney(
   browserType: BrowserType,
   options: RunJourneyOptions,
 ): Promise<PlaywrightMeasurements> {
+  if (options.diagnosticMode !== 'baseline') {
+    throw new Error(
+      'runJourney only returns baseline measurements; use captureJourney for diagnostics',
+    );
+  }
+  return (await captureJourney(browserType, options)).measurements;
+}
+
+/** Executes a journey and returns semantic measurements and optional evidence. */
+export async function captureJourney(
+  browserType: BrowserType,
+  options: RunJourneyOptions,
+): Promise<JourneyCapture> {
   const effective = validateRunJourneyOptions(options);
   const browser = await browserType.launch({ headless: effective.headless });
   try {
@@ -29,7 +47,7 @@ export async function runJourney(
     if (created < execution.end) {
       throw new Error('Artifact creation must not precede measurement end');
     }
-    return {
+    const measurements: PlaywrightMeasurements = {
       schemaVersion: 2,
       kind: 'PlaywrightMeasurements',
       runId: options.runId,
@@ -68,6 +86,14 @@ export async function runJourney(
       createdAt: created.toISOString(),
       measurements: execution.measurements,
     };
+    const observations = browserObservations(
+      options,
+      execution,
+      created.toISOString(),
+    );
+    return observations === undefined
+      ? { measurements }
+      : { measurements, observations };
   } finally {
     await browser.close();
   }

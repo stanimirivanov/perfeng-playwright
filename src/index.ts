@@ -5,12 +5,19 @@ export {
   type InteractionOptions,
 } from './interaction/types.js';
 export { measureInteraction } from './interaction/measure-interaction.js';
-export { runJourney } from './journey/run-journey.js';
-export { writeMeasurementArtifact } from './journey/artifact.js';
+export { captureJourney, runJourney } from './journey/run-journey.js';
+export {
+  writeJourneyArtifacts,
+  writeMeasurementArtifact,
+  type JourneyArtifactPaths,
+} from './journey/artifact.js';
 export type {
+  BrowserObservations,
   CacheProfile,
   DiagnosticMode,
   EnvironmentIdentity,
+  IterationPageObservation,
+  JourneyCapture,
   PageReuse,
   PlaywrightMeasurement,
   PlaywrightMeasurements,
@@ -19,11 +26,12 @@ export type {
   WorkloadIdentity,
   WorkloadProfile,
   WrittenMeasurementArtifact,
+  WrittenJourneyArtifacts,
 } from './journey/types.js';
 export { parseRunnerConfiguration } from './configuration/parse.js';
 export { readRunnerConfiguration } from './configuration/read.js';
 export type { RunnerConfiguration } from './configuration/types.js';
-export { runSearchJourney } from './journeys/search.js';
+export { captureSearchJourney, runSearchJourney } from './journeys/search.js';
 export {
   finishPageObservation,
   startPageObservation,

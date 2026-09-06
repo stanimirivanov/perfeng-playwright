@@ -2,15 +2,17 @@ import { chromium, type BrowserType } from '@playwright/test';
 
 import type { RunnerConfiguration } from '../configuration/types.js';
 import { measureInteraction } from '../interaction/measure-interaction.js';
-import { runJourney } from '../journey/run-journey.js';
-import type { PlaywrightMeasurements } from '../journey/types.js';
+import { captureJourney, runJourney } from '../journey/run-journey.js';
+import type {
+  JourneyCapture,
+  PlaywrightMeasurements,
+  RunJourneyOptions,
+} from '../journey/types.js';
 
-/** Runs the repository-owned search action-to-visible journey. */
-export function runSearchJourney(
+function searchJourneyOptions(
   configuration: RunnerConfiguration,
-  browserType: BrowserType = chromium,
-): Promise<PlaywrightMeasurements> {
-  return runJourney(browserType, {
+): RunJourneyOptions {
+  return {
     runId: configuration.runId,
     testId: configuration.testId,
     workload: configuration.workload,
@@ -37,5 +39,21 @@ export function runSearchJourney(
         }),
       ];
     },
-  });
+  };
+}
+
+/** Runs the repository-owned search action-to-visible baseline journey. */
+export function runSearchJourney(
+  configuration: RunnerConfiguration,
+  browserType: BrowserType = chromium,
+): Promise<PlaywrightMeasurements> {
+  return runJourney(browserType, searchJourneyOptions(configuration));
+}
+
+/** Runs the search journey with optional independently persisted diagnostics. */
+export function captureSearchJourney(
+  configuration: RunnerConfiguration,
+  browserType: BrowserType = chromium,
+): Promise<JourneyCapture> {
+  return captureJourney(browserType, searchJourneyOptions(configuration));
 }

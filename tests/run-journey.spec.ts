@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 
 import { chromium, expect, test } from '@playwright/test';
 
 import {
+  captureJourney,
   measureInteraction,
   runJourney,
+  writeJourneyArtifacts,
   writeMeasurementArtifact,
   type RunJourneyOptions,
 } from '../src/index.js';
@@ -167,8 +169,45 @@ test('rejects a page lifetime that outlives a cold context', async () => {
 test('rejects unimplemented diagnostic modes before launching a browser', async () => {
   const invalid = options('warm', [], new Set());
   invalid.diagnosticMode = 'trace';
-  await expect(runJourney(chromium, invalid)).rejects.toThrow(
+  await expect(captureJourney(chromium, invalid)).rejects.toThrow(
     'Unsupported diagnostic mode: trace',
+  );
+});
+
+test('captures lightweight observations only for measured iterations', async () => {
+  const diagnostic = options('warm', [], new Set());
+  diagnostic.diagnosticMode = 'lightweight';
+
+  const capture = await captureJourney(chromium, diagnostic);
+
+  expect(capture.measurements.diagnosticMode).toBe('lightweight');
+  expect(capture.observations?.execution).toEqual({
+    mode: 'lightweight',
+    contextReuse: 'per-run',
+    pageReuse: 'per-iteration',
+    captureIterations: [1, 2],
+  });
+  expect(
+    capture.observations?.observations.map(({ iteration }) => iteration),
+  ).toEqual([1, 2]);
+  expect(
+    capture.observations?.observations.every(
+      ({ observation }) => observation.supportedEntryTypes.length > 0,
+    ),
+  ).toBe(true);
+  expect(
+    Date.parse(capture.observations?.captureWindow.start ?? ''),
+  ).toBeLessThanOrEqual(
+    Date.parse(capture.observations?.captureWindow.end ?? ''),
+  );
+});
+
+test('prevents measurement-only callers from discarding diagnostics', async () => {
+  const diagnostic = options('warm', [], new Set());
+  diagnostic.diagnosticMode = 'lightweight';
+
+  await expect(runJourney(chromium, diagnostic)).rejects.toThrow(
+    'use captureJourney for diagnostics',
   );
 });
 
@@ -186,4 +225,60 @@ test('writes immutable deterministic artifact bytes and reports integrity', asyn
   await expect(writeMeasurementArtifact(path, payload)).rejects.toMatchObject({
     code: 'EEXIST',
   });
+});
+
+test('writes measurement and observation artifacts as one owned operation', async ({}, testInfo) => {
+  const diagnostic = options('warm', [], new Set());
+  diagnostic.diagnosticMode = 'lightweight';
+  diagnostic.warmupIterations = 0;
+  diagnostic.measurementIterations = 1;
+  const capture = await captureJourney(chromium, diagnostic);
+  const measurementPath = testInfo.outputPath('artifacts', 'measurements.json');
+  const observationsPath = testInfo.outputPath(
+    'artifacts',
+    'observations.json',
+  );
+
+  const written = await writeJourneyArtifacts(
+    { measurements: measurementPath, observations: observationsPath },
+    capture,
+  );
+  const measurementBytes = await readFile(measurementPath);
+  const observationBytes = await readFile(observationsPath);
+
+  expect(written).toEqual({
+    measurements: {
+      sha256: createHash('sha256').update(measurementBytes).digest('hex'),
+      sizeBytes: measurementBytes.length,
+    },
+    observations: {
+      sha256: createHash('sha256').update(observationBytes).digest('hex'),
+      sizeBytes: observationBytes.length,
+    },
+  });
+  expect(JSON.parse(observationBytes.toString('utf8'))).toEqual(
+    capture.observations,
+  );
+});
+
+test('removes newly created output when another artifact already exists', async ({}, testInfo) => {
+  const diagnostic = options('warm', [], new Set());
+  diagnostic.diagnosticMode = 'lightweight';
+  diagnostic.warmupIterations = 0;
+  diagnostic.measurementIterations = 1;
+  const capture = await captureJourney(chromium, diagnostic);
+  const measurementPath = testInfo.outputPath('rollback-measurements.json');
+  const observationsPath = testInfo.outputPath('rollback-observations.json');
+  await writeFile(observationsPath, 'existing', 'utf8');
+
+  await expect(
+    writeJourneyArtifacts(
+      { measurements: measurementPath, observations: observationsPath },
+      capture,
+    ),
+  ).rejects.toMatchObject({ code: 'EEXIST' });
+  await expect(readFile(measurementPath)).rejects.toMatchObject({
+    code: 'ENOENT',
+  });
+  await expect(readFile(observationsPath, 'utf8')).resolves.toBe('existing');
 });

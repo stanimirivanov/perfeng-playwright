@@ -1,1 +1,1 @@
-export { runSearchJourney } from './journeys/search.js';
+export { captureSearchJourney, runSearchJourney } from './journeys/search.js';

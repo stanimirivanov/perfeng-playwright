@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import type { InteractionMeasurement } from '../interaction/types.js';
+import type { PageObservation } from '../observation/types.js';
 
 export type CacheProfile = 'cold' | 'warm';
 export type PageReuse = 'per-iteration' | 'per-run';
@@ -88,4 +89,40 @@ export interface PlaywrightMeasurements {
 export interface WrittenMeasurementArtifact {
   sha256: string;
   sizeBytes: number;
+}
+
+export interface IterationPageObservation {
+  iteration: number;
+  observation: PageObservation;
+}
+
+export interface BrowserObservations {
+  schemaVersion: 1;
+  kind: 'BrowserObservations';
+  runId: string;
+  testId: string;
+  workload: WorkloadIdentity;
+  environment: EnvironmentIdentity;
+  execution: {
+    mode: 'lightweight';
+    contextReuse: 'per-iteration' | 'per-run';
+    pageReuse: PageReuse;
+    captureIterations: number[];
+  };
+  captureWindow: {
+    start: string;
+    end: string;
+  };
+  observations: IterationPageObservation[];
+  createdAt: string;
+}
+
+export interface JourneyCapture {
+  measurements: PlaywrightMeasurements;
+  observations?: BrowserObservations;
+}
+
+export interface WrittenJourneyArtifacts {
+  measurements: WrittenMeasurementArtifact;
+  observations?: WrittenMeasurementArtifact;
 }
