@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 
 import type { InteractionMeasurement } from '../interaction/types.js';
 import type { PageObservation } from '../observation/types.js';
+import type { PerformanceTrace } from '../trace/types.js';
 
 export type CacheProfile = 'cold' | 'warm';
 export type PageReuse = 'per-iteration' | 'per-run';
@@ -40,6 +41,7 @@ export interface RunJourneyOptions {
   environment: EnvironmentIdentity;
   warmupIterations: number;
   measurementIterations: number;
+  captureIterations?: number[];
   journey: (page: Page) => Promise<InteractionMeasurement[]>;
   headless?: boolean;
   viewport?: Viewport;
@@ -117,12 +119,27 @@ export interface BrowserObservations {
   createdAt: string;
 }
 
+export interface IterationPerformanceTrace extends PerformanceTrace {
+  iteration: number;
+}
+
 export interface JourneyCapture {
   measurements: PlaywrightMeasurements;
   observations?: BrowserObservations;
+  trace?: IterationPerformanceTrace;
+}
+
+export interface WrittenTraceArtifact extends WrittenMeasurementArtifact {
+  iteration: number;
+  format: 'chrome-trace-json-gzip';
+  mediaType: 'application/gzip';
+  dataLossOccurred: boolean;
+  startedAt: string;
+  finishedAt: string;
 }
 
 export interface WrittenJourneyArtifacts {
   measurements: WrittenMeasurementArtifact;
   observations?: WrittenMeasurementArtifact;
+  trace?: WrittenTraceArtifact;
 }

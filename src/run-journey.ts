@@ -10,6 +10,7 @@ export type {
   DiagnosticMode,
   EnvironmentIdentity,
   IterationPageObservation,
+  IterationPerformanceTrace,
   JourneyCapture,
   PageReuse,
   PlaywrightMeasurement,
@@ -19,5 +20,6 @@ export type {
   WorkloadIdentity,
   WorkloadProfile,
   WrittenMeasurementArtifact,
+  WrittenTraceArtifact,
   WrittenJourneyArtifacts,
 } from './journey/types.js';

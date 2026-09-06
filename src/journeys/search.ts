@@ -12,7 +12,7 @@ import type {
 function searchJourneyOptions(
   configuration: RunnerConfiguration,
 ): RunJourneyOptions {
-  return {
+  const options: RunJourneyOptions = {
     runId: configuration.runId,
     testId: configuration.testId,
     workload: configuration.workload,
@@ -40,6 +40,10 @@ function searchJourneyOptions(
       ];
     },
   };
+  if (configuration.diagnostics !== undefined) {
+    options.captureIterations = configuration.diagnostics.captureIterations;
+  }
+  return options;
 }
 
 /** Runs the repository-owned search action-to-visible baseline journey. */

@@ -12,6 +12,7 @@ import type {
 export interface JourneyArtifactPaths {
   measurements: string;
   observations?: string;
+  trace?: string;
 }
 
 interface PendingArtifact {
@@ -24,9 +25,7 @@ interface OpenArtifact extends PendingArtifact {
   handle: FileHandle;
 }
 
-function pendingArtifact(path: string, payload: unknown): PendingArtifact {
-  const content = JSON.stringify(payload, undefined, 2) + '\n';
-  const bytes = Buffer.from(content, 'utf8');
+function pendingBytes(path: string, bytes: Buffer): PendingArtifact {
   return {
     path,
     bytes,
@@ -35,6 +34,11 @@ function pendingArtifact(path: string, payload: unknown): PendingArtifact {
       sizeBytes: bytes.length,
     },
   };
+}
+
+function pendingJson(path: string, payload: unknown): PendingArtifact {
+  const content = JSON.stringify(payload, undefined, 2) + '\n';
+  return pendingBytes(path, Buffer.from(content, 'utf8'));
 }
 
 async function writeArtifacts(artifacts: PendingArtifact[]): Promise<void> {
@@ -70,7 +74,7 @@ export async function writeMeasurementArtifact(
   path: string,
   payload: PlaywrightMeasurements,
 ): Promise<WrittenMeasurementArtifact> {
-  const artifact = pendingArtifact(path, payload);
+  const artifact = pendingJson(path, payload);
   await writeArtifacts([artifact]);
   return artifact.integrity;
 }
@@ -80,10 +84,7 @@ export async function writeJourneyArtifacts(
   paths: JourneyArtifactPaths,
   capture: JourneyCapture,
 ): Promise<WrittenJourneyArtifacts> {
-  const measurements = pendingArtifact(
-    paths.measurements,
-    capture.measurements,
-  );
+  const measurements = pendingJson(paths.measurements, capture.measurements);
   let observations: PendingArtifact | undefined;
   if (capture.observations !== undefined) {
     if (paths.observations === undefined) {
@@ -91,19 +92,42 @@ export async function writeJourneyArtifacts(
         'Lightweight diagnostics require an observations output path',
       );
     }
-    observations = pendingArtifact(paths.observations, capture.observations);
+    observations = pendingJson(paths.observations, capture.observations);
   } else if (paths.observations !== undefined) {
     throw new Error(
       'An observations output path requires lightweight diagnostic mode',
     );
   }
-  await writeArtifacts(
-    observations === undefined ? [measurements] : [measurements, observations],
-  );
-  return observations === undefined
-    ? { measurements: measurements.integrity }
-    : {
-        measurements: measurements.integrity,
-        observations: observations.integrity,
-      };
+  let trace: PendingArtifact | undefined;
+  if (capture.trace !== undefined) {
+    if (paths.trace === undefined) {
+      throw new Error('Trace diagnostics require a trace output path');
+    }
+    trace = pendingBytes(paths.trace, capture.trace.bytes);
+  } else if (paths.trace !== undefined) {
+    throw new Error('A trace output path requires trace diagnostic mode');
+  }
+  await writeArtifacts([
+    measurements,
+    ...(observations === undefined ? [] : [observations]),
+    ...(trace === undefined ? [] : [trace]),
+  ]);
+  const written: WrittenJourneyArtifacts = {
+    measurements: measurements.integrity,
+  };
+  if (observations !== undefined) {
+    written.observations = observations.integrity;
+  }
+  if (trace !== undefined && capture.trace !== undefined) {
+    written.trace = {
+      ...trace.integrity,
+      iteration: capture.trace.iteration,
+      format: capture.trace.format,
+      mediaType: capture.trace.mediaType,
+      dataLossOccurred: capture.trace.dataLossOccurred,
+      startedAt: capture.trace.startedAt,
+      finishedAt: capture.trace.finishedAt,
+    };
+  }
+  return written;
 }

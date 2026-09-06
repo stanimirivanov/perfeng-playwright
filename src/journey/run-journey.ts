@@ -36,6 +36,10 @@ export async function captureJourney(
   const effective = validateRunJourneyOptions(options);
   const browser = await browserType.launch({ headless: effective.headless });
   try {
+    const name = browserName(browser);
+    if (options.diagnosticMode === 'trace' && name !== 'chromium') {
+      throw new Error('Trace diagnostic mode requires Chromium');
+    }
     const execution = await executeJourney(browser, options, {
       viewport: effective.viewport,
       deviceScaleFactor: effective.deviceScaleFactor,
@@ -73,7 +77,7 @@ export async function captureJourney(
         architecture: runtimeArchitecture(),
       },
       browser: {
-        name: browserName(browser),
+        name,
         version: browser.version(),
         headless: effective.headless,
         viewport: { ...effective.viewport },
@@ -91,9 +95,17 @@ export async function captureJourney(
       execution,
       created.toISOString(),
     );
-    return observations === undefined
-      ? { measurements }
-      : { measurements, observations };
+    if (options.diagnosticMode === 'trace' && execution.trace === undefined) {
+      throw new Error('Trace diagnostic mode produced no trace evidence');
+    }
+    const capture: JourneyCapture = { measurements };
+    if (observations !== undefined) {
+      capture.observations = observations;
+    }
+    if (execution.trace !== undefined) {
+      capture.trace = execution.trace;
+    }
+    return capture;
   } finally {
     await browser.close();
   }

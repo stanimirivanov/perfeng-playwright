@@ -6,7 +6,7 @@ const versionPattern = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
 const cacheProfiles = new Set<string>(['cold', 'warm']);
 const pageReusePolicies = new Set<string>(['per-iteration', 'per-run']);
-const diagnosticModes = new Set<string>(['baseline', 'lightweight']);
+const diagnosticModes = new Set<string>(['baseline', 'lightweight', 'trace']);
 const workloadProfiles = new Set<WorkloadProfile>([
   'smoke',
   'average',
@@ -79,6 +79,22 @@ export function validateRunJourneyOptions(
   }
   assertInteger('warmupIterations', options.warmupIterations, 0);
   assertInteger('measurementIterations', options.measurementIterations, 1);
+  if (options.diagnosticMode === 'trace') {
+    if (options.captureIterations?.length !== 1) {
+      throw new Error('Trace mode requires exactly one capture iteration');
+    }
+    const [iteration] = options.captureIterations;
+    if (
+      iteration === undefined ||
+      !Number.isInteger(iteration) ||
+      iteration < 1 ||
+      iteration > options.measurementIterations
+    ) {
+      throw new Error('Trace mode must select one measured iteration');
+    }
+  } else if (options.captureIterations !== undefined) {
+    throw new Error('Capture iterations are only supported for trace mode');
+  }
   const viewport = options.viewport ?? { width: 1280, height: 720 };
   assertInteger('viewport.width', viewport.width, 1);
   assertInteger('viewport.height', viewport.height, 1);

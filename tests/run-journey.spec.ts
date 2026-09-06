@@ -168,9 +168,22 @@ test('rejects a page lifetime that outlives a cold context', async () => {
 
 test('rejects unimplemented diagnostic modes before launching a browser', async () => {
   const invalid = options('warm', [], new Set());
-  invalid.diagnosticMode = 'trace';
+  invalid.diagnosticMode = 'memory';
   await expect(captureJourney(chromium, invalid)).rejects.toThrow(
-    'Unsupported diagnostic mode: trace',
+    'Unsupported diagnostic mode: memory',
+  );
+});
+
+test('requires trace selection to identify one measured iteration', async () => {
+  const diagnostic = options('warm', [], new Set());
+  diagnostic.diagnosticMode = 'trace';
+
+  await expect(captureJourney(chromium, diagnostic)).rejects.toThrow(
+    'requires exactly one capture iteration',
+  );
+  diagnostic.captureIterations = [3];
+  await expect(captureJourney(chromium, diagnostic)).rejects.toThrow(
+    'must select one measured iteration',
   );
 });
 
@@ -209,6 +222,26 @@ test('prevents measurement-only callers from discarding diagnostics', async () =
   await expect(runJourney(chromium, diagnostic)).rejects.toThrow(
     'use captureJourney for diagnostics',
   );
+});
+
+test('captures a trace only around the selected measured iteration', async () => {
+  const diagnostic = options('warm', [], new Set());
+  diagnostic.diagnosticMode = 'trace';
+  diagnostic.captureIterations = [2];
+
+  const capture = await captureJourney(chromium, diagnostic);
+
+  expect(capture.measurements.diagnosticMode).toBe('trace');
+  expect(capture.trace?.iteration).toBe(2);
+  expect(capture.trace?.format).toBe('chrome-trace-json-gzip');
+  expect(capture.trace?.mediaType).toBe('application/gzip');
+  expect(capture.trace?.bytes.subarray(0, 2)).toEqual(
+    Buffer.from([0x1f, 0x8b]),
+  );
+  expect(Date.parse(capture.trace?.startedAt ?? '')).toBeLessThanOrEqual(
+    Date.parse(capture.trace?.finishedAt ?? ''),
+  );
+  expect(capture.observations).toBeUndefined();
 });
 
 test('writes immutable deterministic artifact bytes and reports integrity', async ({}, testInfo) => {

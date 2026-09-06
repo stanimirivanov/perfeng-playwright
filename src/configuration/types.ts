@@ -19,6 +19,9 @@ export interface RunnerConfiguration {
     measurementIterations: number;
   };
   diagnosticMode: DiagnosticMode;
+  diagnostics?: {
+    captureIterations: [number];
+  };
   environment: EnvironmentIdentity;
   target: {
     baseUrl: string;
