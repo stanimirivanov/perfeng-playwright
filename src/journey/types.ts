@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import type { InteractionMeasurement } from '../interaction/types.js';
+import type { MemoryCensus, MemoryEvidence } from '../memory/types.js';
 import type { PageObservation } from '../observation/types.js';
 import type { PerformanceTrace } from '../trace/types.js';
 
@@ -123,10 +124,17 @@ export interface IterationPerformanceTrace extends PerformanceTrace {
   iteration: number;
 }
 
+export interface JourneyMemoryCapture {
+  captureIterations: number[];
+  before: MemoryEvidence;
+  after: MemoryEvidence;
+}
+
 export interface JourneyCapture {
   measurements: PlaywrightMeasurements;
   observations?: BrowserObservations;
   trace?: IterationPerformanceTrace;
+  memory?: JourneyMemoryCapture;
 }
 
 export interface WrittenTraceArtifact extends WrittenMeasurementArtifact {
@@ -138,8 +146,23 @@ export interface WrittenTraceArtifact extends WrittenMeasurementArtifact {
   finishedAt: string;
 }
 
+export interface WrittenHeapSnapshotArtifact extends WrittenMeasurementArtifact {
+  capturedAt: string;
+  format: 'chrome-heap-snapshot-json-gzip';
+  mediaType: 'application/gzip';
+  uncompressedSizeBytes: number;
+  census: MemoryCensus;
+}
+
+export interface WrittenMemoryArtifacts {
+  captureIterations: number[];
+  before: WrittenHeapSnapshotArtifact;
+  after: WrittenHeapSnapshotArtifact;
+}
+
 export interface WrittenJourneyArtifacts {
   measurements: WrittenMeasurementArtifact;
   observations?: WrittenMeasurementArtifact;
   trace?: WrittenTraceArtifact;
+  memory?: WrittenMemoryArtifacts;
 }

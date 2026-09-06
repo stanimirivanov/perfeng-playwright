@@ -37,8 +37,14 @@ export async function captureJourney(
   const browser = await browserType.launch({ headless: effective.headless });
   try {
     const name = browserName(browser);
-    if (options.diagnosticMode === 'trace' && name !== 'chromium') {
-      throw new Error('Trace diagnostic mode requires Chromium');
+    if (
+      (options.diagnosticMode === 'trace' ||
+        options.diagnosticMode === 'memory') &&
+      name !== 'chromium'
+    ) {
+      throw new Error(
+        `${options.diagnosticMode === 'trace' ? 'Trace' : 'Memory'} diagnostic mode requires Chromium`,
+      );
     }
     const execution = await executeJourney(browser, options, {
       viewport: effective.viewport,
@@ -98,12 +104,18 @@ export async function captureJourney(
     if (options.diagnosticMode === 'trace' && execution.trace === undefined) {
       throw new Error('Trace diagnostic mode produced no trace evidence');
     }
+    if (options.diagnosticMode === 'memory' && execution.memory === undefined) {
+      throw new Error('Memory diagnostic mode produced no memory evidence');
+    }
     const capture: JourneyCapture = { measurements };
     if (observations !== undefined) {
       capture.observations = observations;
     }
     if (execution.trace !== undefined) {
       capture.trace = execution.trace;
+    }
+    if (execution.memory !== undefined) {
+      capture.memory = execution.memory;
     }
     return capture;
   } finally {

@@ -8,8 +8,9 @@ import { main } from '../src/cli.js';
 import { parseRunnerConfiguration, runSearchJourney } from '../src/index.js';
 
 function runnerConfiguration(
-  diagnosticMode: 'baseline' | 'lightweight' | 'trace' = 'baseline',
+  diagnosticMode: 'baseline' | 'lightweight' | 'trace' | 'memory' = 'baseline',
 ): object {
+  const memory = diagnosticMode === 'memory';
   return {
     schemaVersion: 2,
     runId: 'perf-20260902-130000-a1b2c3d5',
@@ -22,14 +23,16 @@ function runnerConfiguration(
     },
     scenario: {
       cacheProfile: 'warm',
-      pageReuse: 'per-iteration',
-      warmupIterations: 0,
-      measurementIterations: 1,
+      pageReuse: memory ? 'per-run' : 'per-iteration',
+      warmupIterations: memory ? 1 : 0,
+      measurementIterations: memory ? 2 : 1,
     },
     diagnosticMode,
     ...(diagnosticMode === 'trace'
       ? { diagnostics: { captureIterations: [1] } }
-      : {}),
+      : memory
+        ? { diagnostics: { captureIterations: [1, 2] } }
+        : {}),
     environment: {
       profile: { id: 'windows-mainstream', version: '1.0.0' },
       fingerprint: 'f'.repeat(64),
@@ -181,4 +184,53 @@ test('writes a selected Chrome trace independently from measurements', async ({}
   expect(Date.parse(written.trace?.startedAt ?? '')).toBeLessThanOrEqual(
     Date.parse(written.trace?.finishedAt ?? ''),
   );
+});
+
+test('writes memory snapshots independently from repeated measurements', async ({}, testInfo) => {
+  const configurationPath = testInfo.outputPath('memory-configuration.json');
+  const measurementPath = testInfo.outputPath(
+    'memory',
+    'playwright-measurements.json',
+  );
+  const beforePath = testInfo.outputPath('memory', 'before.heapsnapshot.gz');
+  const afterPath = testInfo.outputPath('memory', 'after.heapsnapshot.gz');
+  await writeFile(
+    configurationPath,
+    JSON.stringify(runnerConfiguration('memory')),
+    'utf8',
+  );
+
+  await expect(
+    main([
+      'run',
+      '--config',
+      configurationPath,
+      '--output',
+      measurementPath,
+      '--heap-snapshot-before-output',
+      beforePath,
+    ]),
+  ).rejects.toThrow('require --heap-snapshot-before-output');
+
+  const written = await main([
+    'run',
+    '--config',
+    configurationPath,
+    '--output',
+    measurementPath,
+    '--heap-snapshot-before-output',
+    beforePath,
+    '--heap-snapshot-after-output',
+    afterPath,
+  ]);
+  const measurementBytes = await readFile(measurementPath);
+  const beforeBytes = await readFile(beforePath);
+  const afterBytes = await readFile(afterPath);
+
+  expect(gunzipSync(beforeBytes).length).toBeGreaterThan(0);
+  expect(gunzipSync(afterBytes).length).toBeGreaterThan(0);
+  expect(written.measurements).toEqual(integrity(measurementBytes));
+  expect(written.memory?.captureIterations).toEqual([1, 2]);
+  expect(written.memory?.before).toMatchObject(integrity(beforeBytes));
+  expect(written.memory?.after).toMatchObject(integrity(afterBytes));
 });

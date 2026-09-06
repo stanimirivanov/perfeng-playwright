@@ -1,10 +1,12 @@
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 
+import { captureMemoryComparison } from '../memory/capture.js';
 import { executeIteration } from './iteration-execution.js';
 import { validateMeasurementSet } from './measurement-set.js';
 import type {
   IterationPageObservation,
   IterationPerformanceTrace,
+  JourneyMemoryCapture,
   PlaywrightMeasurement,
   RunJourneyOptions,
   Viewport,
@@ -14,6 +16,7 @@ export interface JourneyExecution {
   measurements: PlaywrightMeasurement[];
   observations: IterationPageObservation[];
   trace?: IterationPerformanceTrace;
+  memory?: JourneyMemoryCapture;
   start: Date;
   end: Date;
 }
@@ -57,6 +60,7 @@ export async function executeJourney(
   const collected: PlaywrightMeasurement[] = [];
   const observations: IterationPageObservation[] = [];
   let trace: IterationPerformanceTrace | undefined;
+  let memory: JourneyMemoryCapture | undefined;
   const execute = async (page: Page, iteration?: number): Promise<void> => {
     const execution = await executeIteration(page, options, iteration);
     const result = validateMeasurementSet(
@@ -98,12 +102,43 @@ export async function executeJourney(
           await run();
         }
         const start = new Date();
-        for (
-          let iteration = 1;
-          iteration <= options.measurementIterations;
-          iteration += 1
-        ) {
-          await run(iteration);
+        if (options.diagnosticMode === 'memory') {
+          if (page === undefined || options.captureIterations === undefined) {
+            throw new Error('Memory diagnostic lifecycle was not initialized');
+          }
+          const first = options.captureIterations[0];
+          const last = options.captureIterations.at(-1);
+          if (first === undefined || last === undefined) {
+            throw new Error('Memory capture iterations were not initialized');
+          }
+          for (let iteration = 1; iteration < first; iteration += 1) {
+            await run(iteration);
+          }
+          const captured = await captureMemoryComparison(page, async () => {
+            for (let iteration = first; iteration <= last; iteration += 1) {
+              await run(iteration);
+            }
+          });
+          memory = {
+            captureIterations: [...options.captureIterations],
+            before: captured.before,
+            after: captured.after,
+          };
+          for (
+            let iteration = last + 1;
+            iteration <= options.measurementIterations;
+            iteration += 1
+          ) {
+            await run(iteration);
+          }
+        } else {
+          for (
+            let iteration = 1;
+            iteration <= options.measurementIterations;
+            iteration += 1
+          ) {
+            await run(iteration);
+          }
         }
         const execution: JourneyExecution = {
           measurements: collected,
@@ -113,6 +148,9 @@ export async function executeJourney(
         };
         if (trace !== undefined) {
           execution.trace = trace;
+        }
+        if (memory !== undefined) {
+          execution.memory = memory;
         }
         return execution;
       } finally {

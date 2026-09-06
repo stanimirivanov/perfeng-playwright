@@ -67,10 +67,10 @@ environment identity in a `playwright-measurements/v2` payload. Warm-up
 observations are validated and discarded. Every measured metric must occur
 exactly once per iteration.
 
-`baseline`, `lightweight`, and `trace` modes are executable. Memory and
-smoothness still fail before the browser starts; those modes remain unavailable
-until their collectors implement the required evidence contracts. The
-environment profile and fingerprint identify a separately captured
+`baseline`, `lightweight`, `trace`, and `memory` modes are executable.
+Smoothness still fails before the browser starts and remains unavailable until
+its collector implements the required evidence contract. The environment
+profile and fingerprint identify a separately captured
 `browser-environment/v1` artifact. This runner validates that identity but does
 not invent or probe host characteristics.
 
@@ -146,9 +146,17 @@ object contents and must be handled as sensitive diagnostic artifacts. The
 collector deliberately does not call Chrome's invasive leak-preparation command,
 which can terminate workers and discard caches before measuring the application.
 
-The low-level memory API is available to library consumers. Runner `memory` mode
-remains unavailable until a later step defines repeated same-page lifecycle,
-selected iterations, immutable output paths, and artifact receipts.
+Runner `memory` mode requires a warm profile, one page reused for the run, at
+least one warm-up, and at least two consecutive selected measurement iterations.
+It takes one snapshot immediately before that repeated-action window and one
+immediately afterward. Measurements outside the selected window still execute
+on the same page but are not enclosed by the snapshots.
+
+The CLI requires separate immutable destinations for the before and after heap
+snapshots. Its integrity receipt includes the selected iterations, checksums,
+compressed and uncompressed sizes, capture timestamps, and the corresponding
+memory census. Snapshot interpretation and leak verdicts remain analysis-plane
+responsibilities.
 
 ## Run the search journey
 
@@ -179,6 +187,13 @@ separate gzip destination:
 
 ```sh
 pnpm run run -- run --config examples/search-trace-run.json --output results/playwright-measurements.json --trace-output results/chrome-trace.json.gz
+```
+
+For repeated same-page memory evidence, use the memory configuration and two
+separate gzip destinations:
+
+```sh
+pnpm run run -- run --config examples/search-memory-run.json --output results/playwright-measurements.json --heap-snapshot-before-output results/before.heapsnapshot.gz --heap-snapshot-after-output results/after.heapsnapshot.gz
 ```
 
 The v2 configuration is a closed, versioned JSON object. The target must be an

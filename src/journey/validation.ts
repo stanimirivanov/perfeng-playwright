@@ -6,7 +6,12 @@ const versionPattern = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
 const cacheProfiles = new Set<string>(['cold', 'warm']);
 const pageReusePolicies = new Set<string>(['per-iteration', 'per-run']);
-const diagnosticModes = new Set<string>(['baseline', 'lightweight', 'trace']);
+const diagnosticModes = new Set<string>([
+  'baseline',
+  'lightweight',
+  'trace',
+  'memory',
+]);
 const workloadProfiles = new Set<WorkloadProfile>([
   'smoke',
   'average',
@@ -92,8 +97,42 @@ export function validateRunJourneyOptions(
     ) {
       throw new Error('Trace mode must select one measured iteration');
     }
+  } else if (options.diagnosticMode === 'memory') {
+    if (options.cacheProfile !== 'warm' || options.pageReuse !== 'per-run') {
+      throw new Error(
+        'Memory diagnostic mode requires a warm cache profile and per-run page reuse',
+      );
+    }
+    if (options.warmupIterations < 1) {
+      throw new Error(
+        'Memory diagnostic mode requires at least one warm-up iteration',
+      );
+    }
+    if ((options.captureIterations?.length ?? 0) < 2) {
+      throw new Error(
+        'Memory diagnostic mode requires at least two capture iterations',
+      );
+    }
+    const captureIterations = options.captureIterations ?? [];
+    if (
+      captureIterations.some((iteration, index) => {
+        const previous = captureIterations[index - 1];
+        return (
+          !Number.isInteger(iteration) ||
+          iteration < 1 ||
+          iteration > options.measurementIterations ||
+          (index > 0 && (previous === undefined || iteration !== previous + 1))
+        );
+      })
+    ) {
+      throw new Error(
+        'Memory diagnostic mode requires consecutive measured capture iterations',
+      );
+    }
   } else if (options.captureIterations !== undefined) {
-    throw new Error('Capture iterations are only supported for trace mode');
+    throw new Error(
+      'Capture iterations are only supported for trace and memory modes',
+    );
   }
   const viewport = options.viewport ?? { width: 1280, height: 720 };
   assertInteger('viewport.width', viewport.width, 1);

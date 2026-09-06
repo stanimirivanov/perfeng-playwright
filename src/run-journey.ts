@@ -11,6 +11,7 @@ export type {
   EnvironmentIdentity,
   IterationPageObservation,
   IterationPerformanceTrace,
+  JourneyMemoryCapture,
   JourneyCapture,
   PageReuse,
   PlaywrightMeasurement,
@@ -20,6 +21,8 @@ export type {
   WorkloadIdentity,
   WorkloadProfile,
   WrittenMeasurementArtifact,
+  WrittenHeapSnapshotArtifact,
+  WrittenMemoryArtifacts,
   WrittenTraceArtifact,
   WrittenJourneyArtifacts,
 } from './journey/types.js';

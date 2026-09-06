@@ -26,7 +26,17 @@ function searchJourneyOptions(
     viewport: configuration.browser.viewport,
     deviceScaleFactor: configuration.browser.deviceScaleFactor,
     journey: async (page) => {
-      await page.goto(configuration.target.baseUrl, { waitUntil: 'load' });
+      if (
+        configuration.diagnosticMode === 'memory' &&
+        page.url() === configuration.target.baseUrl
+      ) {
+        await page.locator('#results').evaluate((element) => {
+          element.replaceChildren();
+          (element as HTMLElement).hidden = true;
+        });
+      } else {
+        await page.goto(configuration.target.baseUrl, { waitUntil: 'load' });
+      }
       return [
         await measureInteraction(page, {
           mode: 'black-box',
