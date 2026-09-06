@@ -14,7 +14,8 @@ Implementation is organized by responsibility:
 - `src/journeys`: concrete repository-owned browser journeys;
 - `src/observation`: page-observation state, browser installation, and snapshot projection;
 - `src/trace`: bounded Chromium CDP performance-trace capture and stream handling;
-- `src/memory`: garbage-collected memory census and heap-snapshot capture.
+- `src/memory`: garbage-collected memory census and heap-snapshot capture;
+- `src/smoothness`: rendering-focused Chromium trace capture.
 
 The short files at the `src` root are package entry points, command and
 configuration adapters, or compatibility façades. Implementation modules depend
@@ -67,10 +68,11 @@ environment identity in a `playwright-measurements/v2` payload. Warm-up
 observations are validated and discarded. Every measured metric must occur
 exactly once per iteration.
 
-`baseline`, `lightweight`, `trace`, and `memory` modes are executable.
-Smoothness still fails before the browser starts and remains unavailable until
-its collector implements the required evidence contract. The environment
-profile and fingerprint identify a separately captured
+`baseline`, `lightweight`, `trace`, and `memory` runner modes are executable.
+The low-level smoothness collector is available to library consumers, but
+runner `smoothness` mode still fails before the browser starts until its
+selection and artifact lifecycle are integrated. The environment profile and
+fingerprint identify a separately captured
 `browser-environment/v1` artifact. This runner validates that identity but does
 not invent or probe host characteristics.
 
@@ -157,6 +159,26 @@ snapshots. Its integrity receipt includes the selected iterations, checksums,
 compressed and uncompressed sizes, capture timestamps, and the corresponding
 memory census. Snapshot interpretation and leak verdicts remain analysis-plane
 responsibilities.
+
+## CDP rendering smoothness trace
+
+`captureSmoothnessTrace` records one owned action using a rendering-focused
+Chromium trace preset. It requests compositor, GPU, Viz, animation, input,
+invalidation, frame-pipeline, scheduler, and DevTools timeline categories. V8
+sampling is omitted so the capture stays focused on rendering behavior.
+
+The raw trace can support later diagnosis of long or irregular frames,
+main-thread scheduling stalls, expensive style, layout, paint, and compositing
+work, animation timing, input latency, excessive invalidation, and GPU or
+compositor pipeline delays. The collector does not infer an exact dropped-frame
+count or issue a smoothness verdict; those require analysis against display
+refresh timing and trace completeness.
+
+Smoothness traces use the same bounded gzip stream and completion limits as
+general performance traces. Screenshots are deliberately excluded. The trace
+can still contain URLs, function names, DOM-related timing data, and User Timing
+values and must be handled as sensitive evidence. Runner integration and
+immutable trace output are a separate implementation step.
 
 ## Run the search journey
 

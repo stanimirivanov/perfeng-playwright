@@ -50,6 +50,7 @@ export type {
   MemoryCensus,
   MemoryEvidence,
 } from './memory/types.js';
+export { captureSmoothnessTrace } from './smoothness/capture.js';
 export { capturePerformanceTrace } from './trace/capture.js';
 export type {
   PerformanceTrace,

@@ -6,6 +6,7 @@ export async function readTraceStream(
   session: CDPSession,
   handle: string,
   maxBytes: number,
+  description: string,
 ): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let size = 0;
@@ -22,7 +23,7 @@ export async function readTraceStream(
       size += chunk.length;
       if (size > maxBytes) {
         throw new Error(
-          `Chrome performance trace exceeds the ${String(maxBytes)} byte limit`,
+          `${description} exceeds the ${String(maxBytes)} byte limit`,
         );
       }
       chunks.push(chunk);
