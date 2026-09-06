@@ -16,6 +16,7 @@ import { captureSearchJourney } from './journeys/search.js';
 interface Command {
   configurationPath: string;
   outputPath: string;
+  receiptOutputPath: string;
   observationsOutputPath?: string;
   traceOutputPath?: string;
   heapSnapshotBeforeOutputPath?: string;
@@ -23,7 +24,7 @@ interface Command {
 }
 
 const usage =
-  'Usage: perfeng-playwright run --config FILE --output FILE [--observations-output FILE | --trace-output FILE | --heap-snapshot-before-output FILE --heap-snapshot-after-output FILE]';
+  'Usage: perfeng-playwright run --config FILE --output FILE --receipt-output FILE [--observations-output FILE | --trace-output FILE | --heap-snapshot-before-output FILE --heap-snapshot-after-output FILE]';
 
 export function parseCommand(args: string[]): Command {
   const configurationPath = args[2];
@@ -41,7 +42,7 @@ export function parseCommand(args: string[]): Command {
   ) {
     throw new Error(usage);
   }
-  const command: Command = { configurationPath, outputPath };
+  const command: Partial<Command> = { configurationPath, outputPath };
   const assigned = new Set<string>();
   for (let index = 5; index < args.length; index += 2) {
     const flag = args[index];
@@ -53,7 +54,9 @@ export function parseCommand(args: string[]): Command {
       throw new Error(`Duplicate command-line option: ${flag}`);
     }
     assigned.add(flag);
-    if (flag === '--observations-output') {
+    if (flag === '--receipt-output') {
+      command.receiptOutputPath = value;
+    } else if (flag === '--observations-output') {
       command.observationsOutputPath = value;
     } else if (flag === '--trace-output') {
       command.traceOutputPath = value;
@@ -65,7 +68,10 @@ export function parseCommand(args: string[]): Command {
       throw new Error(usage);
     }
   }
-  return command;
+  if (command.receiptOutputPath === undefined) {
+    throw new Error(usage);
+  }
+  return command as Command;
 }
 
 function artifactPaths(
@@ -85,6 +91,7 @@ function artifactPaths(
     }
     return {
       measurements: command.outputPath,
+      receipt: command.receiptOutputPath,
       observations: command.observationsOutputPath,
     };
   }
@@ -101,6 +108,7 @@ function artifactPaths(
     }
     return {
       measurements: command.outputPath,
+      receipt: command.receiptOutputPath,
       trace: command.traceOutputPath,
     };
   }
@@ -117,6 +125,7 @@ function artifactPaths(
     }
     return {
       measurements: command.outputPath,
+      receipt: command.receiptOutputPath,
       memory: {
         before: command.heapSnapshotBeforeOutputPath,
         after: command.heapSnapshotAfterOutputPath,
@@ -131,7 +140,10 @@ function artifactPaths(
   ) {
     throw new Error('Diagnostic output requires a diagnostic mode');
   }
-  return { measurements: command.outputPath };
+  return {
+    measurements: command.outputPath,
+    receipt: command.receiptOutputPath,
+  };
 }
 
 export async function main(args: string[]): Promise<WrittenJourneyArtifacts> {

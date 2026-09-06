@@ -197,7 +197,7 @@ test('rejects an impossible page lifetime', () => {
 });
 
 test('requires an unambiguous command line', () => {
-  expect(
+  expect(() =>
     parseCommand([
       'run',
       '--config',
@@ -205,9 +205,21 @@ test('requires an unambiguous command line', () => {
       '--output',
       'results/measurements.json',
     ]),
+  ).toThrow('Usage:');
+  expect(
+    parseCommand([
+      'run',
+      '--config',
+      'configuration.json',
+      '--output',
+      'results/measurements.json',
+      '--receipt-output',
+      'results/receipt.json',
+    ]),
   ).toEqual({
     configurationPath: 'configuration.json',
     outputPath: 'results/measurements.json',
+    receiptOutputPath: 'results/receipt.json',
   });
   expect(
     parseCommand([
@@ -216,6 +228,8 @@ test('requires an unambiguous command line', () => {
       'configuration.json',
       '--output',
       'results/measurements.json',
+      '--receipt-output',
+      'results/receipt.json',
       '--heap-snapshot-before-output',
       'results/before.heapsnapshot.gz',
       '--heap-snapshot-after-output',
@@ -224,6 +238,7 @@ test('requires an unambiguous command line', () => {
   ).toEqual({
     configurationPath: 'configuration.json',
     outputPath: 'results/measurements.json',
+    receiptOutputPath: 'results/receipt.json',
     heapSnapshotBeforeOutputPath: 'results/before.heapsnapshot.gz',
     heapSnapshotAfterOutputPath: 'results/after.heapsnapshot.gz',
   });
@@ -234,6 +249,8 @@ test('requires an unambiguous command line', () => {
       'configuration.json',
       '--output',
       'results/measurements.json',
+      '--receipt-output',
+      'results/receipt.json',
       '--trace-output',
       'results/one.json.gz',
       '--trace-output',
@@ -247,12 +264,15 @@ test('requires an unambiguous command line', () => {
       'configuration.json',
       '--output',
       'results/measurements.json',
+      '--receipt-output',
+      'results/receipt.json',
       '--trace-output',
       'results/trace.json.gz',
     ]),
   ).toEqual({
     configurationPath: 'configuration.json',
     outputPath: 'results/measurements.json',
+    receiptOutputPath: 'results/receipt.json',
     traceOutputPath: 'results/trace.json.gz',
   });
   expect(
@@ -262,12 +282,15 @@ test('requires an unambiguous command line', () => {
       'configuration.json',
       '--output',
       'results/measurements.json',
+      '--receipt-output',
+      'results/receipt.json',
       '--observations-output',
       'results/observations.json',
     ]),
   ).toEqual({
     configurationPath: 'configuration.json',
     outputPath: 'results/measurements.json',
+    receiptOutputPath: 'results/receipt.json',
     observationsOutputPath: 'results/observations.json',
   });
   expect(() => parseCommand(['run', '--output', 'results.json'])).toThrow(

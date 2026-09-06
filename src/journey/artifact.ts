@@ -4,6 +4,7 @@ import { dirname } from 'node:path';
 
 import type {
   JourneyCapture,
+  PlaywrightRunnerReceipt,
   PlaywrightMeasurements,
   WrittenJourneyArtifacts,
   WrittenMeasurementArtifact,
@@ -11,6 +12,7 @@ import type {
 
 export interface JourneyArtifactPaths {
   measurements: string;
+  receipt: string;
   observations?: string;
   trace?: string;
   memory?: {
@@ -83,7 +85,7 @@ export async function writeMeasurementArtifact(
   return artifact.integrity;
 }
 
-/** Writes a journey's measurement and optional observation artifacts once. */
+/** Writes a journey's measurement, diagnostics, and integrity receipt once. */
 export async function writeJourneyArtifacts(
   paths: JourneyArtifactPaths,
   capture: JourneyCapture,
@@ -132,13 +134,6 @@ export async function writeJourneyArtifacts(
       'Heap snapshot output paths require memory diagnostic mode',
     );
   }
-  await writeArtifacts([
-    measurements,
-    ...(observations === undefined ? [] : [observations]),
-    ...(trace === undefined ? [] : [trace]),
-    ...(memoryBefore === undefined ? [] : [memoryBefore]),
-    ...(memoryAfter === undefined ? [] : [memoryAfter]),
-  ]);
   const written: WrittenJourneyArtifacts = {
     measurements: measurements.integrity,
   };
@@ -183,5 +178,20 @@ export async function writeJourneyArtifacts(
       },
     };
   }
+  const receiptValue: PlaywrightRunnerReceipt = {
+    schema: 'playwright-runner-receipt/v1',
+    runId: capture.measurements.runId,
+    testId: capture.measurements.testId,
+    artifacts: written,
+  };
+  const receipt = pendingJson(paths.receipt, receiptValue);
+  await writeArtifacts([
+    measurements,
+    ...(observations === undefined ? [] : [observations]),
+    ...(trace === undefined ? [] : [trace]),
+    ...(memoryBefore === undefined ? [] : [memoryBefore]),
+    ...(memoryAfter === undefined ? [] : [memoryAfter]),
+    receipt,
+  ]);
   return written;
 }

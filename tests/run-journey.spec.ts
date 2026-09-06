@@ -320,11 +320,13 @@ test('captures and writes memory evidence around repeated same-page iterations',
 
   const capture = await captureJourney(chromium, diagnostic);
   const measurementPath = testInfo.outputPath('memory', 'measurements.json');
+  const receiptPath = testInfo.outputPath('memory', 'receipt.json');
   const beforePath = testInfo.outputPath('memory', 'before.heapsnapshot.gz');
   const afterPath = testInfo.outputPath('memory', 'after.heapsnapshot.gz');
   const written = await writeJourneyArtifacts(
     {
       measurements: measurementPath,
+      receipt: receiptPath,
       memory: { before: beforePath, after: afterPath },
     },
     capture,
@@ -378,9 +380,14 @@ test('writes measurement and observation artifacts as one owned operation', asyn
     'artifacts',
     'observations.json',
   );
+  const receiptPath = testInfo.outputPath('artifacts', 'receipt.json');
 
   const written = await writeJourneyArtifacts(
-    { measurements: measurementPath, observations: observationsPath },
+    {
+      measurements: measurementPath,
+      receipt: receiptPath,
+      observations: observationsPath,
+    },
     capture,
   );
   const measurementBytes = await readFile(measurementPath);
@@ -409,11 +416,16 @@ test('removes newly created output when another artifact already exists', async 
   const capture = await captureJourney(chromium, diagnostic);
   const measurementPath = testInfo.outputPath('rollback-measurements.json');
   const observationsPath = testInfo.outputPath('rollback-observations.json');
+  const receiptPath = testInfo.outputPath('rollback-receipt.json');
   await writeFile(observationsPath, 'existing', 'utf8');
 
   await expect(
     writeJourneyArtifacts(
-      { measurements: measurementPath, observations: observationsPath },
+      {
+        measurements: measurementPath,
+        receipt: receiptPath,
+        observations: observationsPath,
+      },
       capture,
     ),
   ).rejects.toMatchObject({ code: 'EEXIST' });
@@ -421,4 +433,26 @@ test('removes newly created output when another artifact already exists', async 
     code: 'ENOENT',
   });
   await expect(readFile(observationsPath, 'utf8')).resolves.toBe('existing');
+  await expect(readFile(receiptPath)).rejects.toMatchObject({ code: 'ENOENT' });
+});
+
+test('does not replace an existing integrity receipt', async ({}, testInfo) => {
+  const capture = await captureJourney(
+    chromium,
+    options('warm', [], new Set()),
+  );
+  const measurementPath = testInfo.outputPath('receipt-measurements.json');
+  const receiptPath = testInfo.outputPath('existing-receipt.json');
+  await writeFile(receiptPath, 'existing', 'utf8');
+
+  await expect(
+    writeJourneyArtifacts(
+      { measurements: measurementPath, receipt: receiptPath },
+      capture,
+    ),
+  ).rejects.toMatchObject({ code: 'EEXIST' });
+  await expect(readFile(measurementPath)).rejects.toMatchObject({
+    code: 'ENOENT',
+  });
+  await expect(readFile(receiptPath, 'utf8')).resolves.toBe('existing');
 });

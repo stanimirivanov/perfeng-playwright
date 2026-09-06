@@ -76,6 +76,7 @@ test('runs the baseline command into one immutable artifact', async ({}, testInf
     'results',
     'playwright-measurements.json',
   );
+  const receiptPath = testInfo.outputPath('results', 'playwright-receipt.json');
   await writeFile(
     configurationPath,
     JSON.stringify(runnerConfiguration()),
@@ -88,12 +89,21 @@ test('runs the baseline command into one immutable artifact', async ({}, testInf
     configurationPath,
     '--output',
     outputPath,
+    '--receipt-output',
+    receiptPath,
   ]);
   const bytes = await readFile(outputPath);
+  const receipt = JSON.parse(await readFile(receiptPath, 'utf8')) as unknown;
   const payload = JSON.parse(bytes.toString('utf8')) as { kind: string };
 
   expect(payload.kind).toBe('PlaywrightMeasurements');
   expect(written).toEqual({ measurements: integrity(bytes) });
+  expect(receipt).toEqual({
+    schema: 'playwright-runner-receipt/v1',
+    runId: 'perf-20260902-130000-a1b2c3d5',
+    testId: 'search-browser',
+    artifacts: written,
+  });
 });
 
 test('writes lightweight observations independently from measurements', async ({}, testInfo) => {
@@ -108,6 +118,10 @@ test('writes lightweight observations independently from measurements', async ({
     'lightweight',
     'browser-observations.json',
   );
+  const receiptPath = testInfo.outputPath(
+    'lightweight',
+    'playwright-receipt.json',
+  );
   await writeFile(
     configurationPath,
     JSON.stringify(runnerConfiguration('lightweight')),
@@ -115,7 +129,15 @@ test('writes lightweight observations independently from measurements', async ({
   );
 
   await expect(
-    main(['run', '--config', configurationPath, '--output', measurementPath]),
+    main([
+      'run',
+      '--config',
+      configurationPath,
+      '--output',
+      measurementPath,
+      '--receipt-output',
+      receiptPath,
+    ]),
   ).rejects.toThrow('require --observations-output');
 
   const written = await main([
@@ -124,6 +146,8 @@ test('writes lightweight observations independently from measurements', async ({
     configurationPath,
     '--output',
     measurementPath,
+    '--receipt-output',
+    receiptPath,
     '--observations-output',
     observationsPath,
   ]);
@@ -151,6 +175,7 @@ test('writes a selected Chrome trace independently from measurements', async ({}
     'playwright-measurements.json',
   );
   const tracePath = testInfo.outputPath('trace', 'chrome-trace.json.gz');
+  const receiptPath = testInfo.outputPath('trace', 'playwright-receipt.json');
   await writeFile(
     configurationPath,
     JSON.stringify(runnerConfiguration('trace')),
@@ -158,7 +183,15 @@ test('writes a selected Chrome trace independently from measurements', async ({}
   );
 
   await expect(
-    main(['run', '--config', configurationPath, '--output', measurementPath]),
+    main([
+      'run',
+      '--config',
+      configurationPath,
+      '--output',
+      measurementPath,
+      '--receipt-output',
+      receiptPath,
+    ]),
   ).rejects.toThrow('require --trace-output');
 
   const written = await main([
@@ -167,6 +200,8 @@ test('writes a selected Chrome trace independently from measurements', async ({}
     configurationPath,
     '--output',
     measurementPath,
+    '--receipt-output',
+    receiptPath,
     '--trace-output',
     tracePath,
   ]);
@@ -202,6 +237,10 @@ test('writes a selected smoothness trace independently from measurements', async
     'smoothness',
     'chrome-smoothness-trace.json.gz',
   );
+  const receiptPath = testInfo.outputPath(
+    'smoothness',
+    'playwright-receipt.json',
+  );
   await writeFile(
     configurationPath,
     JSON.stringify(runnerConfiguration('smoothness')),
@@ -209,7 +248,15 @@ test('writes a selected smoothness trace independently from measurements', async
   );
 
   await expect(
-    main(['run', '--config', configurationPath, '--output', measurementPath]),
+    main([
+      'run',
+      '--config',
+      configurationPath,
+      '--output',
+      measurementPath,
+      '--receipt-output',
+      receiptPath,
+    ]),
   ).rejects.toThrow('Smoothness diagnostics require --trace-output');
 
   const written = await main([
@@ -218,6 +265,8 @@ test('writes a selected smoothness trace independently from measurements', async
     configurationPath,
     '--output',
     measurementPath,
+    '--receipt-output',
+    receiptPath,
     '--trace-output',
     tracePath,
   ]);
@@ -246,6 +295,7 @@ test('writes memory snapshots independently from repeated measurements', async (
   );
   const beforePath = testInfo.outputPath('memory', 'before.heapsnapshot.gz');
   const afterPath = testInfo.outputPath('memory', 'after.heapsnapshot.gz');
+  const receiptPath = testInfo.outputPath('memory', 'playwright-receipt.json');
   await writeFile(
     configurationPath,
     JSON.stringify(runnerConfiguration('memory')),
@@ -259,6 +309,8 @@ test('writes memory snapshots independently from repeated measurements', async (
       configurationPath,
       '--output',
       measurementPath,
+      '--receipt-output',
+      receiptPath,
       '--heap-snapshot-before-output',
       beforePath,
     ]),
@@ -270,6 +322,8 @@ test('writes memory snapshots independently from repeated measurements', async (
     configurationPath,
     '--output',
     measurementPath,
+    '--receipt-output',
+    receiptPath,
     '--heap-snapshot-before-output',
     beforePath,
     '--heap-snapshot-after-output',
