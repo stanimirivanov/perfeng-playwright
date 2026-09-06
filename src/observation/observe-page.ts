@@ -4,9 +4,14 @@ import { installPageObserver } from './install-page-observer.js';
 import { snapshotPageObserver } from './snapshot-page-observer.js';
 import type { PageObservation } from './types.js';
 
+const preparedPages = new WeakSet<Page>();
+
 /** Starts an opt-in, page-local observation without changing measured completion. */
 export async function startPageObservation(page: Page): Promise<void> {
-  await page.addInitScript(installPageObserver);
+  if (!preparedPages.has(page)) {
+    await page.addInitScript(installPageObserver);
+    preparedPages.add(page);
+  }
   await page.evaluate(installPageObserver);
 }
 

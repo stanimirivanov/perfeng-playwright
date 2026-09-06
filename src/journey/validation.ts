@@ -6,7 +6,7 @@ const versionPattern = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
 const cacheProfiles = new Set<string>(['cold', 'warm']);
 const pageReusePolicies = new Set<string>(['per-iteration', 'per-run']);
-const diagnosticModes = new Set<string>(['baseline']);
+const diagnosticModes = new Set<string>(['baseline', 'lightweight']);
 const workloadProfiles = new Set<WorkloadProfile>([
   'smoke',
   'average',

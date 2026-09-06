@@ -54,12 +54,20 @@ test('rejects unknown configuration and unsafe target URL fields', () => {
   }
 });
 
-test('rejects unsupported diagnostics and impossible page lifetime', () => {
+test('accepts lightweight capture and rejects unsupported diagnostics', () => {
+  expect(
+    parseRunnerConfiguration(
+      JSON.stringify({ ...valid, diagnosticMode: 'lightweight' }),
+    ).diagnosticMode,
+  ).toBe('lightweight');
   expect(() =>
     parseRunnerConfiguration(
       JSON.stringify({ ...valid, diagnosticMode: 'trace' }),
     ),
   ).toThrow('Unsupported diagnostic mode');
+});
+
+test('rejects an impossible page lifetime', () => {
   expect(() =>
     parseRunnerConfiguration(
       JSON.stringify({
@@ -86,6 +94,21 @@ test('requires an unambiguous command line', () => {
   ).toEqual({
     configurationPath: 'configuration.json',
     outputPath: 'results/measurements.json',
+  });
+  expect(
+    parseCommand([
+      'run',
+      '--config',
+      'configuration.json',
+      '--output',
+      'results/measurements.json',
+      '--observations-output',
+      'results/observations.json',
+    ]),
+  ).toEqual({
+    configurationPath: 'configuration.json',
+    outputPath: 'results/measurements.json',
+    observationsOutputPath: 'results/observations.json',
   });
   expect(() => parseCommand(['run', '--output', 'results.json'])).toThrow(
     'Usage:',

@@ -1,9 +1,16 @@
-export { writeMeasurementArtifact } from './journey/artifact.js';
-export { runJourney } from './journey/run-journey.js';
+export {
+  writeJourneyArtifacts,
+  writeMeasurementArtifact,
+  type JourneyArtifactPaths,
+} from './journey/artifact.js';
+export { captureJourney, runJourney } from './journey/run-journey.js';
 export type {
+  BrowserObservations,
   CacheProfile,
   DiagnosticMode,
   EnvironmentIdentity,
+  IterationPageObservation,
+  JourneyCapture,
   PageReuse,
   PlaywrightMeasurement,
   PlaywrightMeasurements,
@@ -12,4 +19,5 @@ export type {
   WorkloadIdentity,
   WorkloadProfile,
   WrittenMeasurementArtifact,
+  WrittenJourneyArtifacts,
 } from './journey/types.js';
