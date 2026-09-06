@@ -39,6 +39,14 @@ export {
   startPageObservation,
 } from './observation/observe-page.js';
 export type { PageObservation } from './observation/types.js';
+export { captureMemoryComparison } from './memory/capture.js';
+export type {
+  HeapSnapshot,
+  MemoryCapture,
+  MemoryCaptureOptions,
+  MemoryCensus,
+  MemoryEvidence,
+} from './memory/types.js';
 export { capturePerformanceTrace } from './trace/capture.js';
 export type {
   PerformanceTrace,

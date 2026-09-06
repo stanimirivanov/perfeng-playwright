@@ -1,5 +1,6 @@
 import type { CDPSession, Page } from '@playwright/test';
 
+import { chromiumSession } from '../cdp/session.js';
 import { traceCaptureOptions } from './configuration.js';
 import { readTraceStream } from './stream.js';
 import type {
@@ -99,16 +100,6 @@ async function stopTrace(
   };
 }
 
-async function chromiumSession(page: Page): Promise<CDPSession> {
-  try {
-    return await page.context().newCDPSession(page);
-  } catch (error) {
-    throw new Error('CDP performance tracing requires Chromium', {
-      cause: error,
-    });
-  }
-}
-
 /** Captures Chrome DevTools performance evidence around one owned action. */
 export async function capturePerformanceTrace<T>(
   page: Page,
@@ -116,7 +107,7 @@ export async function capturePerformanceTrace<T>(
   options: TraceCaptureOptions = {},
 ): Promise<TraceCapture<T>> {
   const effective = traceCaptureOptions(options);
-  const session = await chromiumSession(page);
+  const session = await chromiumSession(page, 'CDP performance tracing');
   try {
     await session.send('Tracing.start', {
       transferMode: 'ReturnAsStream',
