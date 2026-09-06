@@ -13,6 +13,7 @@ Implementation is organized by responsibility:
 - `src/journey`: generic repetition, browser lifecycle, payload, and artifact mechanics;
 - `src/journeys`: concrete repository-owned browser journeys;
 - `src/observation`: page-observation state, browser installation, and snapshot projection.
+- `src/trace`: bounded Chromium CDP performance-trace capture and stream handling.
 
 The short files at the `src` root are package entry points, command and
 configuration adapters, or compatibility façades. Implementation modules depend
@@ -90,6 +91,25 @@ Frame intervals over 50 ms are observations, not a claim that an exact number
 of frames was dropped. Resource timing also cannot identify every failed
 request or HTTP status. Network-event and precise rendering diagnosis remain
 CDP responsibilities.
+
+## CDP performance trace capture
+
+`capturePerformanceTrace` captures one owned action through a Chromium
+`CDPSession`. It requests the DevTools timeline, frame, loading, scheduler,
+User Timing, and V8 execution categories and returns Chrome's raw JSON trace as
+gzip bytes. The result preserves Chrome's `dataLossOccurred` signal instead of
+assuming that a completed stream contains all events.
+
+Trace transfer is streamed from Chrome in bounded chunks. The default output
+limit is 128 MiB and callers may select a smaller limit or raise it to at most
+512 MiB. Trace completion has a bounded timeout, and the collector releases the
+CDP session after successful captures, action failures, and output failures.
+
+Chrome traces are sensitive even though this preset does not request
+screenshots. They may contain URLs, script locations, function names, and User
+Timing values. The primitive is intentionally not yet wired to the runner's
+`trace` mode: explicit iteration selection and immutable trace artifact output
+must be added before that mode can be accepted.
 
 `writeMeasurementArtifact` writes one payload as deterministic UTF-8 JSON.
 `writeJourneyArtifacts` reserves all requested destinations before writing the
