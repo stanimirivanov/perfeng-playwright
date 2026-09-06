@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "runId": "perf-20260902-130000-a1b2c3d5",
+  "testId": "search-browser",
+  "workload": {
+    "id": "search-browser-smoke",
+    "version": "1.0.0",
+    "profile": "smoke",
+    "sha256": "dcbb9c0f92dc16917a24f7eb52c95689a2091f893b64ccb219246af51a7da3c7"
+  },
+  "scenario": {
+    "cacheProfile": "warm",
+    "warmupIterations": 2,
+    "measurementIterations": 10
+  },
+  "target": {
+    "baseUrl": "http://127.0.0.1:4173/"
+  },
+  "browser": {
+    "headless": true,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "deviceScaleFactor": 1
+  }
+}

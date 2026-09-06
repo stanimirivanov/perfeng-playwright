@@ -17,3 +17,9 @@ export {
   type WorkloadProfile,
   type WrittenMeasurementArtifact,
 } from './run-journey.js';
+export {
+  parseRunnerConfiguration,
+  readRunnerConfiguration,
+  type RunnerConfiguration,
+} from './configuration.js';
+export { runSearchJourney } from './search-journey.js';

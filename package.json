@@ -1,6 +1,6 @@
 {
   "name": "@perfeng/playwright",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "license": "Apache-2.0",
@@ -10,6 +10,9 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "perfeng-playwright": "./dist/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -18,6 +21,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "run": "node dist/cli.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",

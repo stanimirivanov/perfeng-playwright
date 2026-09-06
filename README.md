@@ -55,10 +55,33 @@ and returns its SHA-256 and byte count for a `raw-result/v1` reference. Existing
 paths are never overwritten. Upload and manifest registration remain storage
 and control-plane responsibilities.
 
+## Run the search journey
+
+Build the CLI, start an authorized target, and supply an explicit run
+configuration. The checked-in example targets the local development fixture;
+replace its identity and target fields for an actual run.
+
+Start the fixture in a separate terminal for the example command:
+
+```sh
+node tests/fixture-server.mjs
+```
+
+```sh
+pnpm build
+pnpm run run -- run --config examples/search-run.json --output results/playwright-measurements.json
+```
+
+The configuration is a closed, versioned JSON object. The target must be an
+absolute HTTP or HTTPS URL without embedded credentials, query parameters, or
+fragments. Put authentication in a future credential adapter, never in this
+file. The output path must not already exist. On success the CLI prints only a
+JSON integrity receipt containing `sha256` and `sizeBytes`; logs and artifact
+registration remain the caller's responsibility.
+
 The included search page is a deterministic test fixture for the timing
 library and journey executor, not a production benchmark or claimed latency
-baseline. A deployment CLI and runner container remain separate implementation
-steps.
+baseline. The runner container remains a separate implementation step.
 
 ## Prototype boundary
 
