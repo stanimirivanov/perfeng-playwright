@@ -6,6 +6,18 @@ browser measurements. Scheduling, run lifecycle, artifact storage,
 normalization, and performance verdicts belong to their respective platform
 components.
 
+Implementation is organized by responsibility:
+
+- `src/interaction`: semantic interaction contracts, validation, and timing strategies;
+- `src/configuration`: closed input parsing and configuration section validation;
+- `src/journey`: generic repetition, browser lifecycle, payload, and artifact mechanics;
+- `src/journeys`: concrete repository-owned browser journeys;
+- `src/observation`: page-observation state, browser installation, and snapshot projection.
+
+The short files at the `src` root are package entry points, command and
+configuration adapters, or compatibility façades. Implementation modules depend
+on domain types directly instead of importing through those façades.
+
 ## Development
 
 Use Node.js 24.18.0 and the pinned pnpm version. Install the Chromium build
@@ -59,6 +71,22 @@ browser starts; later collectors must implement their evidence contracts before
 those modes can be accepted. The environment profile and fingerprint identify
 a separately captured `browser-environment/v1` artifact. This runner validates
 that identity but does not invent or probe host characteristics.
+
+## Lightweight page observations
+
+`startPageObservation` and `finishPageObservation` provide an opt-in raw
+`browser-page-observation/v1` capture around owned browser work. The observer
+records navigation and paint timings, LCP, layout shifts without recent input,
+long tasks, event timing, resource totals, JavaScript heap counters when the
+browser exposes them, and animation-frame intervals. Unsupported browser APIs
+remain explicit through `supportedEntryTypes` and nullable fields.
+
+Frame intervals over 50 ms are observations, not a claim that an exact number
+of frames was dropped. Resource timing also cannot identify every failed
+request or HTTP status. Network-event and precise rendering diagnosis remain
+CDP responsibilities. These observations are not yet wired to the runner's
+`lightweight` mode or artifact output; that boundary remains disabled until the
+runner can preserve the evidence independently from baseline measurements.
 
 `writeMeasurementArtifact` writes the payload once as deterministic UTF-8 JSON
 and returns its SHA-256 and byte count for a `raw-result/v1` reference. Existing

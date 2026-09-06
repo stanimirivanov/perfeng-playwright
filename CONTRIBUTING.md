@@ -17,3 +17,12 @@ must use systems the contributor owns or is authorized to exercise.
 
 Comments should explain contracts and non-obvious invariants. Do not add lint
 suppression comments or comments that merely restate the code.
+
+Keep package exports and compatibility facades at the src root. Put domain
+types, validation, orchestration, browser execution, and persistence in their
+responsibility-focused modules. Implementation modules must import those
+modules directly instead of depending back on a facade.
+
+Functions passed to page.evaluate, page.addInitScript, or another Playwright
+serialization boundary must remain self-contained. Imported runtime helpers
+and module state are not available when the function executes in the browser.
