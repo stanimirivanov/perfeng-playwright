@@ -12,8 +12,9 @@ Implementation is organized by responsibility:
 - `src/configuration`: closed input parsing and configuration section validation;
 - `src/journey`: generic repetition, browser lifecycle, payload, and artifact mechanics;
 - `src/journeys`: concrete repository-owned browser journeys;
-- `src/observation`: page-observation state, browser installation, and snapshot projection.
-- `src/trace`: bounded Chromium CDP performance-trace capture and stream handling.
+- `src/observation`: page-observation state, browser installation, and snapshot projection;
+- `src/trace`: bounded Chromium CDP performance-trace capture and stream handling;
+- `src/memory`: garbage-collected memory census and heap-snapshot capture.
 
 The short files at the `src` root are package entry points, command and
 configuration adapters, or compatibility façades. Implementation modules depend
@@ -123,6 +124,31 @@ measurement and diagnostic payloads, and removes only outputs it created if
 the operation fails. Both return SHA-256 and byte-count integrity fields for
 `raw-result/v1` references. Existing paths are never overwritten. Upload and
 manifest registration remain storage and control-plane responsibilities.
+
+## CDP memory evidence
+
+`captureMemoryComparison` captures memory evidence immediately before and after
+one owned action in Chromium. Each evidence point contains JavaScript heap usage,
+document, DOM-node, and event-listener counts, plus a garbage-collected Chrome
+heap snapshot compressed as gzip. The collector returns raw evidence and does
+not classify a single increase as a memory leak. Reliable leak diagnosis needs
+repeated actions on the same page and trend analysis.
+
+Heap snapshots are streamed into compression rather than assembled as raw JSON
+in memory. Each snapshot has a 256 MiB uncompressed limit by default; callers
+may reduce it or raise it to at most 512 MiB. Snapshot completion is bounded to
+two minutes by default and ten minutes at most. The collector releases its CDP
+session after successful captures, action failures, snapshot failures, and
+timeouts.
+
+Heap snapshots can contain application data, DOM text, URLs, and JavaScript
+object contents and must be handled as sensitive diagnostic artifacts. The
+collector deliberately does not call Chrome's invasive leak-preparation command,
+which can terminate workers and discard caches before measuring the application.
+
+The low-level memory API is available to library consumers. Runner `memory` mode
+remains unavailable until a later step defines repeated same-page lifecycle,
+selected iterations, immutable output paths, and artifact receipts.
 
 ## Run the search journey
 
