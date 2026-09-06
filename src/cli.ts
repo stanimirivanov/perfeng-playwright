@@ -2,12 +2,10 @@
 
 import { pathToFileURL } from 'node:url';
 
-import { readRunnerConfiguration } from './configuration.js';
-import {
-  writeMeasurementArtifact,
-  type WrittenMeasurementArtifact,
-} from './run-journey.js';
-import { runSearchJourney } from './search-journey.js';
+import { readRunnerConfiguration } from './configuration/read.js';
+import { writeMeasurementArtifact } from './journey/artifact.js';
+import type { WrittenMeasurementArtifact } from './journey/types.js';
+import { runSearchJourney } from './journeys/search.js';
 
 interface Command {
   configurationPath: string;
