@@ -2,28 +2,41 @@ import type { DiagnosticMode } from '../journey/types.js';
 import { exactKeys, integer, record } from './primitives.js';
 import type { RunnerConfiguration } from './types.js';
 
+const diagnosticNames: Record<DiagnosticMode, string> = {
+  baseline: 'Baseline',
+  lightweight: 'Lightweight',
+  trace: 'Trace',
+  memory: 'Memory',
+  smoothness: 'Smoothness',
+};
+
 export function parseDiagnostics(
   value: unknown,
   mode: DiagnosticMode,
   measurementIterations: number,
 ): RunnerConfiguration['diagnostics'] {
   if (value === undefined) {
-    if (mode === 'trace' || mode === 'memory') {
+    if (mode === 'trace' || mode === 'memory' || mode === 'smoothness') {
       throw new Error(
-        `${mode === 'trace' ? 'Trace' : 'Memory'} mode requires diagnostics.captureIterations`,
+        `${diagnosticNames[mode]} mode requires diagnostics.captureIterations`,
       );
     }
     return undefined;
   }
-  if (mode !== 'trace' && mode !== 'memory') {
-    throw new Error('diagnostics is only supported for trace and memory modes');
+  if (mode !== 'trace' && mode !== 'memory' && mode !== 'smoothness') {
+    throw new Error(
+      'diagnostics is only supported for trace, memory, and smoothness modes',
+    );
   }
   const source = record(value, 'diagnostics');
   exactKeys(source, 'diagnostics', ['captureIterations']);
   if (!Array.isArray(source.captureIterations)) {
     throw new Error('diagnostics.captureIterations must be an array');
   }
-  if (mode === 'trace' && source.captureIterations.length !== 1) {
+  if (
+    (mode === 'trace' || mode === 'smoothness') &&
+    source.captureIterations.length !== 1
+  ) {
     throw new Error(
       'diagnostics.captureIterations must contain exactly one iteration',
     );

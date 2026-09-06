@@ -31,6 +31,7 @@ const diagnosticModes = new Set<string>([
   'lightweight',
   'trace',
   'memory',
+  'smoothness',
 ]);
 
 export function parseWorkload(value: unknown): WorkloadIdentity {

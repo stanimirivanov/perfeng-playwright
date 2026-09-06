@@ -15,6 +15,21 @@ import type {
 } from './types.js';
 import { validateRunJourneyOptions } from './validation.js';
 
+function chromiumDiagnosticName(
+  mode: RunJourneyOptions['diagnosticMode'],
+): string | undefined {
+  if (mode === 'trace') {
+    return 'Trace';
+  }
+  if (mode === 'memory') {
+    return 'Memory';
+  }
+  if (mode === 'smoothness') {
+    return 'Smoothness';
+  }
+  return undefined;
+}
+
 /** Executes a baseline journey and returns its v2 semantic measurements. */
 export async function runJourney(
   browserType: BrowserType,
@@ -37,13 +52,10 @@ export async function captureJourney(
   const browser = await browserType.launch({ headless: effective.headless });
   try {
     const name = browserName(browser);
-    if (
-      (options.diagnosticMode === 'trace' ||
-        options.diagnosticMode === 'memory') &&
-      name !== 'chromium'
-    ) {
+    const chromiumDiagnostic = chromiumDiagnosticName(options.diagnosticMode);
+    if (chromiumDiagnostic !== undefined && name !== 'chromium') {
       throw new Error(
-        `${options.diagnosticMode === 'trace' ? 'Trace' : 'Memory'} diagnostic mode requires Chromium`,
+        `${chromiumDiagnostic} diagnostic mode requires Chromium`,
       );
     }
     const execution = await executeJourney(browser, options, {
@@ -101,8 +113,16 @@ export async function captureJourney(
       execution,
       created.toISOString(),
     );
-    if (options.diagnosticMode === 'trace' && execution.trace === undefined) {
-      throw new Error('Trace diagnostic mode produced no trace evidence');
+    if (
+      (options.diagnosticMode === 'trace' ||
+        options.diagnosticMode === 'smoothness') &&
+      execution.trace === undefined
+    ) {
+      const diagnostic =
+        options.diagnosticMode === 'trace' ? 'Trace' : 'Smoothness';
+      throw new Error(
+        `${diagnostic} diagnostic mode produced no trace evidence`,
+      );
     }
     if (options.diagnosticMode === 'memory' && execution.memory === undefined) {
       throw new Error('Memory diagnostic mode produced no memory evidence');

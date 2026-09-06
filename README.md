@@ -68,11 +68,9 @@ environment identity in a `playwright-measurements/v2` payload. Warm-up
 observations are validated and discarded. Every measured metric must occur
 exactly once per iteration.
 
-`baseline`, `lightweight`, `trace`, and `memory` runner modes are executable.
-The low-level smoothness collector is available to library consumers, but
-runner `smoothness` mode still fails before the browser starts until its
-selection and artifact lifecycle are integrated. The environment profile and
-fingerprint identify a separately captured
+All declared runner modes are executable: `baseline`, `lightweight`, `trace`,
+`memory`, and `smoothness`. The environment profile and fingerprint identify a
+separately captured
 `browser-environment/v1` artifact. This runner validates that identity but does
 not invent or probe host characteristics.
 
@@ -178,7 +176,13 @@ Smoothness traces use the same bounded gzip stream and completion limits as
 general performance traces. Screenshots are deliberately excluded. The trace
 can still contain URLs, function names, DOM-related timing data, and User Timing
 values and must be handled as sensitive evidence. Runner integration and
-immutable trace output are a separate implementation step.
+immutable trace output use the same artifact contract as general tracing.
+
+Runner `smoothness` mode requires exactly one selected measured iteration and a
+separate `--trace-output` destination. The integrity receipt records the
+iteration, trace format, media type, capture window, checksum, byte count, and
+Chrome's data-loss signal. Rendering analysis and verdicts remain analysis-plane
+responsibilities.
 
 ## Run the search journey
 
@@ -209,6 +213,12 @@ separate gzip destination:
 
 ```sh
 pnpm run run -- run --config examples/search-trace-run.json --output results/playwright-measurements.json --trace-output results/chrome-trace.json.gz
+```
+
+For a rendering-focused trace of one selected iteration, use smoothness mode:
+
+```sh
+pnpm run run -- run --config examples/search-smoothness-run.json --output results/playwright-measurements.json --trace-output results/chrome-smoothness-trace.json.gz
 ```
 
 For repeated same-page memory evidence, use the memory configuration and two

@@ -8,9 +8,17 @@ import { main } from '../src/cli.js';
 import { parseRunnerConfiguration, runSearchJourney } from '../src/index.js';
 
 function runnerConfiguration(
-  diagnosticMode: 'baseline' | 'lightweight' | 'trace' | 'memory' = 'baseline',
+  diagnosticMode:
+    'baseline' | 'lightweight' | 'trace' | 'memory' | 'smoothness' = 'baseline',
 ): object {
   const memory = diagnosticMode === 'memory';
+  const traceLike =
+    diagnosticMode === 'trace' || diagnosticMode === 'smoothness';
+  const diagnostics = traceLike
+    ? { captureIterations: [1] }
+    : memory
+      ? { captureIterations: [1, 2] }
+      : undefined;
   return {
     schemaVersion: 2,
     runId: 'perf-20260902-130000-a1b2c3d5',
@@ -28,11 +36,7 @@ function runnerConfiguration(
       measurementIterations: memory ? 2 : 1,
     },
     diagnosticMode,
-    ...(diagnosticMode === 'trace'
-      ? { diagnostics: { captureIterations: [1] } }
-      : memory
-        ? { diagnostics: { captureIterations: [1, 2] } }
-        : {}),
+    ...(diagnostics === undefined ? {} : { diagnostics }),
     environment: {
       profile: { id: 'windows-mainstream', version: '1.0.0' },
       fingerprint: 'f'.repeat(64),
@@ -184,6 +188,54 @@ test('writes a selected Chrome trace independently from measurements', async ({}
   expect(Date.parse(written.trace?.startedAt ?? '')).toBeLessThanOrEqual(
     Date.parse(written.trace?.finishedAt ?? ''),
   );
+});
+
+test('writes a selected smoothness trace independently from measurements', async ({}, testInfo) => {
+  const configurationPath = testInfo.outputPath(
+    'smoothness-configuration.json',
+  );
+  const measurementPath = testInfo.outputPath(
+    'smoothness',
+    'playwright-measurements.json',
+  );
+  const tracePath = testInfo.outputPath(
+    'smoothness',
+    'chrome-smoothness-trace.json.gz',
+  );
+  await writeFile(
+    configurationPath,
+    JSON.stringify(runnerConfiguration('smoothness')),
+    'utf8',
+  );
+
+  await expect(
+    main(['run', '--config', configurationPath, '--output', measurementPath]),
+  ).rejects.toThrow('Smoothness diagnostics require --trace-output');
+
+  const written = await main([
+    'run',
+    '--config',
+    configurationPath,
+    '--output',
+    measurementPath,
+    '--trace-output',
+    tracePath,
+  ]);
+  const measurementBytes = await readFile(measurementPath);
+  const traceBytes = await readFile(tracePath);
+  const measurement = JSON.parse(measurementBytes.toString('utf8')) as {
+    diagnosticMode: string;
+  };
+
+  expect(measurement.diagnosticMode).toBe('smoothness');
+  expect(gunzipSync(traceBytes).length).toBeGreaterThan(0);
+  expect(written.measurements).toEqual(integrity(measurementBytes));
+  expect(written.trace).toMatchObject({
+    ...integrity(traceBytes),
+    iteration: 1,
+    format: 'chrome-trace-json-gzip',
+    mediaType: 'application/gzip',
+  });
 });
 
 test('writes memory snapshots independently from repeated measurements', async ({}, testInfo) => {

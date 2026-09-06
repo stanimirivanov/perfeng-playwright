@@ -88,14 +88,16 @@ function artifactPaths(
       observations: command.observationsOutputPath,
     };
   }
-  if (mode === 'trace') {
+  if (mode === 'trace' || mode === 'smoothness') {
     if (
       command.traceOutputPath === undefined ||
       command.observationsOutputPath !== undefined ||
       command.heapSnapshotBeforeOutputPath !== undefined ||
       command.heapSnapshotAfterOutputPath !== undefined
     ) {
-      throw new Error('Trace diagnostics require --trace-output FILE');
+      throw new Error(
+        `${mode === 'trace' ? 'Trace' : 'Smoothness'} diagnostics require --trace-output FILE`,
+      );
     }
     return {
       measurements: command.outputPath,
