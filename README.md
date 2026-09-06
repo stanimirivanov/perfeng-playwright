@@ -120,10 +120,11 @@ the later `browser-diagnostics/v1` manifest without guessing.
 
 `writeMeasurementArtifact` writes one payload as deterministic UTF-8 JSON.
 `writeJourneyArtifacts` reserves all requested destinations before writing the
-measurement and diagnostic payloads, and removes only outputs it created if
-the operation fails. Both return SHA-256 and byte-count integrity fields for
-`raw-result/v1` references. Existing paths are never overwritten. Upload and
-manifest registration remain storage and control-plane responsibilities.
+measurement, diagnostic payloads, and integrity receipt, and removes only
+outputs it created if the operation fails. Both return SHA-256 and byte-count
+integrity fields for `raw-result/v1` references. Existing paths are never
+overwritten. Upload and manifest registration remain storage and control-plane
+responsibilities.
 
 ## CDP memory evidence
 
@@ -198,35 +199,40 @@ node tests/fixture-server.mjs
 
 ```sh
 pnpm build
-pnpm run run -- run --config examples/search-run.json --output results/playwright-measurements.json
+pnpm run run -- run --config examples/search-run.json --output results/playwright-measurements.json --receipt-output results/playwright-receipt.json
 ```
 
 For lightweight capture, set `diagnosticMode` to `lightweight` and provide both
 immutable destinations:
 
 ```sh
-pnpm run run -- run --config examples/search-run.json --output results/playwright-measurements.json --observations-output results/browser-observations.json
+pnpm run run -- run --config examples/search-run.json --output results/playwright-measurements.json --receipt-output results/playwright-receipt.json --observations-output results/browser-observations.json
 ```
 
 For a selected Chromium performance trace, use the trace configuration and a
 separate gzip destination:
 
 ```sh
-pnpm run run -- run --config examples/search-trace-run.json --output results/playwright-measurements.json --trace-output results/chrome-trace.json.gz
+pnpm run run -- run --config examples/search-trace-run.json --output results/playwright-measurements.json --receipt-output results/playwright-receipt.json --trace-output results/chrome-trace.json.gz
 ```
 
 For a rendering-focused trace of one selected iteration, use smoothness mode:
 
 ```sh
-pnpm run run -- run --config examples/search-smoothness-run.json --output results/playwright-measurements.json --trace-output results/chrome-smoothness-trace.json.gz
+pnpm run run -- run --config examples/search-smoothness-run.json --output results/playwright-measurements.json --receipt-output results/playwright-receipt.json --trace-output results/chrome-smoothness-trace.json.gz
 ```
 
 For repeated same-page memory evidence, use the memory configuration and two
 separate gzip destinations:
 
 ```sh
-pnpm run run -- run --config examples/search-memory-run.json --output results/playwright-measurements.json --heap-snapshot-before-output results/before.heapsnapshot.gz --heap-snapshot-after-output results/after.heapsnapshot.gz
+pnpm run run -- run --config examples/search-memory-run.json --output results/playwright-measurements.json --receipt-output results/playwright-receipt.json --heap-snapshot-before-output results/before.heapsnapshot.gz --heap-snapshot-after-output results/after.heapsnapshot.gz
 ```
+
+The `playwright-runner-receipt/v1` output is required and written atomically
+with the captured artifacts. It binds the Run and test identities to the capture
+metadata and integrity fields required by later manifest assembly and is never
+overwritten.
 
 The v2 configuration is a closed, versioned JSON object. The target must be an
 absolute HTTP or HTTPS URL without embedded credentials, query parameters, or

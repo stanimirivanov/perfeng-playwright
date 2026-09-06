@@ -16,6 +16,7 @@ export type {
   PageReuse,
   PlaywrightMeasurement,
   PlaywrightMeasurements,
+  PlaywrightRunnerReceipt,
   RunJourneyOptions,
   Viewport,
   WorkloadIdentity,

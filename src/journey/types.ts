@@ -166,3 +166,10 @@ export interface WrittenJourneyArtifacts {
   trace?: WrittenTraceArtifact;
   memory?: WrittenMemoryArtifacts;
 }
+
+export interface PlaywrightRunnerReceipt {
+  schema: 'playwright-runner-receipt/v1';
+  runId: string;
+  testId: string;
+  artifacts: WrittenJourneyArtifacts;
+}
