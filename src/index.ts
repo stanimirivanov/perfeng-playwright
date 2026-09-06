@@ -36,6 +36,11 @@ export type {
 } from './journey/types.js';
 export { parseRunnerConfiguration } from './configuration/parse.js';
 export { readRunnerConfiguration } from './configuration/read.js';
+export {
+  inspectSourceCheckout,
+  type GitCommand,
+  type SourceCheckoutArtifact,
+} from './source-checkout.js';
 export type { RunnerConfiguration } from './configuration/types.js';
 export { captureSearchJourney, runSearchJourney } from './journeys/search.js';
 export {

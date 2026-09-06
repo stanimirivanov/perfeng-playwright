@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import type { InteractionMeasurement } from '../interaction/types.js';
 import type { MemoryCensus, MemoryEvidence } from '../memory/types.js';
 import type { PageObservation } from '../observation/types.js';
+import type { SourceCheckoutArtifact } from '../source-checkout.js';
 import type { PerformanceTrace } from '../trace/types.js';
 
 export type CacheProfile = 'cold' | 'warm';
@@ -168,8 +169,13 @@ export interface WrittenJourneyArtifacts {
 }
 
 export interface PlaywrightRunnerReceipt {
-  schema: 'playwright-runner-receipt/v1';
+  schema: 'playwright-runner-receipt/v2';
   runId: string;
   testId: string;
+  producer: {
+    name: 'playwright';
+    version: string;
+    artifact: SourceCheckoutArtifact;
+  };
   artifacts: WrittenJourneyArtifacts;
 }

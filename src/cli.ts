@@ -12,6 +12,10 @@ import type {
   WrittenJourneyArtifacts,
 } from './journey/types.js';
 import { captureSearchJourney } from './journeys/search.js';
+import {
+  inspectSourceCheckout,
+  type SourceCheckoutArtifact,
+} from './source-checkout.js';
 
 interface Command {
   configurationPath: string;
@@ -146,14 +150,22 @@ function artifactPaths(
   };
 }
 
-export async function main(args: string[]): Promise<WrittenJourneyArtifacts> {
+export async function main(
+  args: string[],
+  inspectCheckout: () => Promise<SourceCheckoutArtifact> = inspectSourceCheckout,
+): Promise<WrittenJourneyArtifacts> {
   const command = parseCommand(args);
   const configuration = await readRunnerConfiguration(
     command.configurationPath,
   );
   const paths = artifactPaths(command, configuration.diagnosticMode);
+  const checkoutBefore = await inspectCheckout();
   const capture = await captureSearchJourney(configuration);
-  return writeJourneyArtifacts(paths, capture);
+  const checkoutAfter = await inspectCheckout();
+  if (JSON.stringify(checkoutBefore) !== JSON.stringify(checkoutAfter)) {
+    throw new Error('Native runner source checkout changed during execution');
+  }
+  return writeJourneyArtifacts(paths, capture, checkoutAfter);
 }
 
 if (

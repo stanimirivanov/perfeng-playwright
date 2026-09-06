@@ -11,7 +11,15 @@ import {
   writeMeasurementArtifact,
   type DiagnosticMode,
   type RunJourneyOptions,
+  type SourceCheckoutArtifact,
 } from '../src/index.js';
+
+const sourceCheckout: SourceCheckoutArtifact = {
+  kind: 'source-checkout',
+  repository: 'https://github.com/stanimirivanov/perfeng-playwright',
+  gitSha: 'a'.repeat(40),
+  dependencyLock: { path: 'pnpm-lock.yaml', sha256: 'b'.repeat(64) },
+};
 
 function integrity(bytes: Buffer): { sha256: string; sizeBytes: number } {
   return {
@@ -330,6 +338,7 @@ test('captures and writes memory evidence around repeated same-page iterations',
       memory: { before: beforePath, after: afterPath },
     },
     capture,
+    sourceCheckout,
   );
   const beforeBytes = await readFile(beforePath);
   const afterBytes = await readFile(afterPath);
@@ -389,6 +398,7 @@ test('writes measurement and observation artifacts as one owned operation', asyn
       observations: observationsPath,
     },
     capture,
+    sourceCheckout,
   );
   const measurementBytes = await readFile(measurementPath);
   const observationBytes = await readFile(observationsPath);
@@ -427,6 +437,7 @@ test('removes newly created output when another artifact already exists', async 
         observations: observationsPath,
       },
       capture,
+      sourceCheckout,
     ),
   ).rejects.toMatchObject({ code: 'EEXIST' });
   await expect(readFile(measurementPath)).rejects.toMatchObject({
@@ -449,6 +460,7 @@ test('does not replace an existing integrity receipt', async ({}, testInfo) => {
     writeJourneyArtifacts(
       { measurements: measurementPath, receipt: receiptPath },
       capture,
+      sourceCheckout,
     ),
   ).rejects.toMatchObject({ code: 'EEXIST' });
   await expect(readFile(measurementPath)).rejects.toMatchObject({
