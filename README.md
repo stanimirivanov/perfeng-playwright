@@ -229,10 +229,13 @@ separate gzip destinations:
 pnpm run run -- run --config examples/search-memory-run.json --output results/playwright-measurements.json --receipt-output results/playwright-receipt.json --heap-snapshot-before-output results/before.heapsnapshot.gz --heap-snapshot-after-output results/after.heapsnapshot.gz
 ```
 
-The `playwright-runner-receipt/v1` output is required and written atomically
-with the captured artifacts. It binds the Run and test identities to the capture
-metadata and integrity fields required by later manifest assembly and is never
-overwritten.
+The `playwright-runner-receipt/v2` output is required and written atomically
+with the captured artifacts. It binds the Run and test identities, capture
+metadata, integrity fields, and native producer provenance required by later
+manifest assembly. The provenance identifies the source repository, Git SHA,
+and exact `pnpm-lock.yaml` checksum. The CLI verifies a clean checkout before
+and after browser execution, refuses publication if it changes, and never
+overwrites an existing receipt.
 
 The v2 configuration is a closed, versioned JSON object. The target must be an
 absolute HTTP or HTTPS URL without embedded credentials, query parameters, or

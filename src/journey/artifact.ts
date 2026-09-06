@@ -9,6 +9,7 @@ import type {
   WrittenJourneyArtifacts,
   WrittenMeasurementArtifact,
 } from './types.js';
+import type { SourceCheckoutArtifact } from '../source-checkout.js';
 
 export interface JourneyArtifactPaths {
   measurements: string;
@@ -89,6 +90,7 @@ export async function writeMeasurementArtifact(
 export async function writeJourneyArtifacts(
   paths: JourneyArtifactPaths,
   capture: JourneyCapture,
+  sourceCheckout: SourceCheckoutArtifact,
 ): Promise<WrittenJourneyArtifacts> {
   const measurements = pendingJson(paths.measurements, capture.measurements);
   let observations: PendingArtifact | undefined;
@@ -179,9 +181,14 @@ export async function writeJourneyArtifacts(
     };
   }
   const receiptValue: PlaywrightRunnerReceipt = {
-    schema: 'playwright-runner-receipt/v1',
+    schema: 'playwright-runner-receipt/v2',
     runId: capture.measurements.runId,
     testId: capture.measurements.testId,
+    producer: {
+      name: 'playwright',
+      version: capture.measurements.runtime.playwrightVersion,
+      artifact: sourceCheckout,
+    },
     artifacts: written,
   };
   const receipt = pendingJson(paths.receipt, receiptValue);

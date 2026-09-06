@@ -5,7 +5,22 @@ import { gunzipSync } from 'node:zlib';
 import { expect, test } from '@playwright/test';
 
 import { main } from '../src/cli.js';
-import { parseRunnerConfiguration, runSearchJourney } from '../src/index.js';
+import {
+  parseRunnerConfiguration,
+  runSearchJourney,
+  type SourceCheckoutArtifact,
+} from '../src/index.js';
+
+const sourceCheckout: SourceCheckoutArtifact = {
+  kind: 'source-checkout',
+  repository: 'https://github.com/stanimirivanov/perfeng-playwright',
+  gitSha: 'a'.repeat(40),
+  dependencyLock: { path: 'pnpm-lock.yaml', sha256: 'b'.repeat(64) },
+};
+
+function runMain(args: string[]) {
+  return main(args, () => Promise.resolve(sourceCheckout));
+}
 
 function runnerConfiguration(
   diagnosticMode:
@@ -83,7 +98,7 @@ test('runs the baseline command into one immutable artifact', async ({}, testInf
     'utf8',
   );
 
-  const written = await main([
+  const written = await runMain([
     'run',
     '--config',
     configurationPath,
@@ -99,11 +114,53 @@ test('runs the baseline command into one immutable artifact', async ({}, testInf
   expect(payload.kind).toBe('PlaywrightMeasurements');
   expect(written).toEqual({ measurements: integrity(bytes) });
   expect(receipt).toEqual({
-    schema: 'playwright-runner-receipt/v1',
+    schema: 'playwright-runner-receipt/v2',
     runId: 'perf-20260902-130000-a1b2c3d5',
     testId: 'search-browser',
+    producer: {
+      name: 'playwright',
+      version: expect.stringMatching(/^\d+\.\d+\.\d+$/),
+      artifact: sourceCheckout,
+    },
     artifacts: written,
   });
+});
+
+test('does not publish artifacts when source provenance changes during execution', async ({}, testInfo) => {
+  const configurationPath = testInfo.outputPath(
+    'changed-source-configuration.json',
+  );
+  const outputPath = testInfo.outputPath('changed-source', 'measurements.json');
+  const receiptPath = testInfo.outputPath('changed-source', 'receipt.json');
+  await writeFile(
+    configurationPath,
+    JSON.stringify(runnerConfiguration()),
+    'utf8',
+  );
+  let inspections = 0;
+
+  await expect(
+    main(
+      [
+        'run',
+        '--config',
+        configurationPath,
+        '--output',
+        outputPath,
+        '--receipt-output',
+        receiptPath,
+      ],
+      () => {
+        inspections += 1;
+        return Promise.resolve({
+          ...sourceCheckout,
+          gitSha: (inspections === 1 ? 'a' : 'c').repeat(40),
+        });
+      },
+    ),
+  ).rejects.toThrow('changed during execution');
+  await expect(readFile(outputPath)).rejects.toMatchObject({ code: 'ENOENT' });
+  await expect(readFile(receiptPath)).rejects.toMatchObject({ code: 'ENOENT' });
 });
 
 test('writes lightweight observations independently from measurements', async ({}, testInfo) => {
@@ -129,7 +186,7 @@ test('writes lightweight observations independently from measurements', async ({
   );
 
   await expect(
-    main([
+    runMain([
       'run',
       '--config',
       configurationPath,
@@ -140,7 +197,7 @@ test('writes lightweight observations independently from measurements', async ({
     ]),
   ).rejects.toThrow('require --observations-output');
 
-  const written = await main([
+  const written = await runMain([
     'run',
     '--config',
     configurationPath,
@@ -183,7 +240,7 @@ test('writes a selected Chrome trace independently from measurements', async ({}
   );
 
   await expect(
-    main([
+    runMain([
       'run',
       '--config',
       configurationPath,
@@ -194,7 +251,7 @@ test('writes a selected Chrome trace independently from measurements', async ({}
     ]),
   ).rejects.toThrow('require --trace-output');
 
-  const written = await main([
+  const written = await runMain([
     'run',
     '--config',
     configurationPath,
@@ -248,7 +305,7 @@ test('writes a selected smoothness trace independently from measurements', async
   );
 
   await expect(
-    main([
+    runMain([
       'run',
       '--config',
       configurationPath,
@@ -259,7 +316,7 @@ test('writes a selected smoothness trace independently from measurements', async
     ]),
   ).rejects.toThrow('Smoothness diagnostics require --trace-output');
 
-  const written = await main([
+  const written = await runMain([
     'run',
     '--config',
     configurationPath,
@@ -303,7 +360,7 @@ test('writes memory snapshots independently from repeated measurements', async (
   );
 
   await expect(
-    main([
+    runMain([
       'run',
       '--config',
       configurationPath,
@@ -316,7 +373,7 @@ test('writes memory snapshots independently from repeated measurements', async (
     ]),
   ).rejects.toThrow('require --heap-snapshot-before-output');
 
-  const written = await main([
+  const written = await runMain([
     'run',
     '--config',
     configurationPath,
