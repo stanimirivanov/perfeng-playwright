@@ -54,7 +54,7 @@ test('rejects unknown configuration and unsafe target URL fields', () => {
   }
 });
 
-test('accepts lightweight and explicitly selected trace capture', () => {
+test('accepts supported diagnostics with explicit capture selections', () => {
   expect(
     parseRunnerConfiguration(
       JSON.stringify({ ...valid, diagnosticMode: 'lightweight' }),
@@ -69,12 +69,27 @@ test('accepts lightweight and explicitly selected trace capture', () => {
       }),
     ).diagnostics,
   ).toEqual({ captureIterations: [2] });
+  expect(
+    parseRunnerConfiguration(
+      JSON.stringify({
+        ...valid,
+        scenario: {
+          ...valid.scenario,
+          pageReuse: 'per-run',
+          warmupIterations: 1,
+          measurementIterations: 3,
+        },
+        diagnosticMode: 'memory',
+        diagnostics: { captureIterations: [1, 2, 3] },
+      }),
+    ).diagnostics,
+  ).toEqual({ captureIterations: [1, 2, 3] });
 });
 
 test('rejects unsupported and invalid diagnostic selections', () => {
   expect(() =>
     parseRunnerConfiguration(
-      JSON.stringify({ ...valid, diagnosticMode: 'memory' }),
+      JSON.stringify({ ...valid, diagnosticMode: 'smoothness' }),
     ),
   ).toThrow('Unsupported diagnostic mode');
   expect(() =>
@@ -100,7 +115,47 @@ test('rejects unsupported and invalid diagnostic selections', () => {
         diagnostics: { captureIterations: [1] },
       }),
     ),
-  ).toThrow('only supported for trace mode');
+  ).toThrow('only supported for trace and memory modes');
+});
+
+test('requires a repeated warm page lifecycle for memory diagnostics', () => {
+  const memory = {
+    ...valid,
+    scenario: {
+      ...valid.scenario,
+      pageReuse: 'per-run',
+      warmupIterations: 1,
+      measurementIterations: 3,
+    },
+    diagnosticMode: 'memory',
+    diagnostics: { captureIterations: [1, 2, 3] },
+  };
+  for (const captureIterations of [[], [1], [1, 3], [2, 1]]) {
+    expect(() =>
+      parseRunnerConfiguration(
+        JSON.stringify({
+          ...memory,
+          diagnostics: { captureIterations },
+        }),
+      ),
+    ).toThrow(/Memory diagnostics|consecutive/);
+  }
+  expect(() =>
+    parseRunnerConfiguration(
+      JSON.stringify({
+        ...memory,
+        scenario: { ...memory.scenario, pageReuse: 'per-iteration' },
+      }),
+    ),
+  ).toThrow('requires a warm cache profile and per-run page reuse');
+  expect(() =>
+    parseRunnerConfiguration(
+      JSON.stringify({
+        ...memory,
+        scenario: { ...memory.scenario, warmupIterations: 0 },
+      }),
+    ),
+  ).toThrow('requires at least one warm-up iteration');
 });
 
 test('rejects an impossible page lifetime', () => {
@@ -131,6 +186,37 @@ test('requires an unambiguous command line', () => {
     configurationPath: 'configuration.json',
     outputPath: 'results/measurements.json',
   });
+  expect(
+    parseCommand([
+      'run',
+      '--config',
+      'configuration.json',
+      '--output',
+      'results/measurements.json',
+      '--heap-snapshot-before-output',
+      'results/before.heapsnapshot.gz',
+      '--heap-snapshot-after-output',
+      'results/after.heapsnapshot.gz',
+    ]),
+  ).toEqual({
+    configurationPath: 'configuration.json',
+    outputPath: 'results/measurements.json',
+    heapSnapshotBeforeOutputPath: 'results/before.heapsnapshot.gz',
+    heapSnapshotAfterOutputPath: 'results/after.heapsnapshot.gz',
+  });
+  expect(() =>
+    parseCommand([
+      'run',
+      '--config',
+      'configuration.json',
+      '--output',
+      'results/measurements.json',
+      '--trace-output',
+      'results/one.json.gz',
+      '--trace-output',
+      'results/two.json.gz',
+    ]),
+  ).toThrow('Duplicate command-line option');
   expect(
     parseCommand([
       'run',

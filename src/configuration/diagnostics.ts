@@ -8,33 +8,53 @@ export function parseDiagnostics(
   measurementIterations: number,
 ): RunnerConfiguration['diagnostics'] {
   if (value === undefined) {
-    if (mode === 'trace') {
-      throw new Error('Trace mode requires diagnostics.captureIterations');
+    if (mode === 'trace' || mode === 'memory') {
+      throw new Error(
+        `${mode === 'trace' ? 'Trace' : 'Memory'} mode requires diagnostics.captureIterations`,
+      );
     }
     return undefined;
   }
-  if (mode !== 'trace') {
-    throw new Error('diagnostics is only supported for trace mode');
+  if (mode !== 'trace' && mode !== 'memory') {
+    throw new Error('diagnostics is only supported for trace and memory modes');
   }
   const source = record(value, 'diagnostics');
   exactKeys(source, 'diagnostics', ['captureIterations']);
-  if (
-    !Array.isArray(source.captureIterations) ||
-    source.captureIterations.length !== 1
-  ) {
+  if (!Array.isArray(source.captureIterations)) {
+    throw new Error('diagnostics.captureIterations must be an array');
+  }
+  if (mode === 'trace' && source.captureIterations.length !== 1) {
     throw new Error(
       'diagnostics.captureIterations must contain exactly one iteration',
     );
   }
-  const iteration = integer(
-    source.captureIterations[0],
-    'diagnostics.captureIterations[0]',
-    1,
-  );
-  if (iteration > measurementIterations) {
+  if (mode === 'memory' && source.captureIterations.length < 2) {
     throw new Error(
-      'diagnostics.captureIterations must select a measured iteration',
+      'Memory diagnostics must capture at least two measured iterations',
     );
   }
-  return { captureIterations: [iteration] };
+  const captureIterations = source.captureIterations.map((value, index) =>
+    integer(value, `diagnostics.captureIterations[${String(index)}]`, 1),
+  );
+  if (
+    captureIterations.some((iteration) => iteration > measurementIterations)
+  ) {
+    throw new Error(
+      'diagnostics.captureIterations must select measured iterations',
+    );
+  }
+  if (
+    mode === 'memory' &&
+    captureIterations.some((iteration, index) => {
+      const previous = captureIterations[index - 1];
+      return (
+        index > 0 && (previous === undefined || iteration !== previous + 1)
+      );
+    })
+  ) {
+    throw new Error(
+      'Memory diagnostics require consecutive capture iterations in ascending order',
+    );
+  }
+  return { captureIterations };
 }

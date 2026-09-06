@@ -43,6 +43,19 @@ export function parseRunnerConfiguration(text: string): RunnerConfiguration {
     diagnosticMode,
     scenario.measurementIterations,
   );
+  if (
+    diagnosticMode === 'memory' &&
+    (scenario.cacheProfile !== 'warm' || scenario.pageReuse !== 'per-run')
+  ) {
+    throw new Error(
+      'Memory diagnostic mode requires a warm cache profile and per-run page reuse',
+    );
+  }
+  if (diagnosticMode === 'memory' && scenario.warmupIterations < 1) {
+    throw new Error(
+      'Memory diagnostic mode requires at least one warm-up iteration',
+    );
+  }
   const configuration: RunnerConfiguration = {
     schemaVersion: 2,
     runId: requiredString(source.runId, 'runId'),

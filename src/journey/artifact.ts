@@ -13,6 +13,10 @@ export interface JourneyArtifactPaths {
   measurements: string;
   observations?: string;
   trace?: string;
+  memory?: {
+    before: string;
+    after: string;
+  };
 }
 
 interface PendingArtifact {
@@ -107,10 +111,33 @@ export async function writeJourneyArtifacts(
   } else if (paths.trace !== undefined) {
     throw new Error('A trace output path requires trace diagnostic mode');
   }
+  let memoryBefore: PendingArtifact | undefined;
+  let memoryAfter: PendingArtifact | undefined;
+  if (capture.memory !== undefined) {
+    if (paths.memory === undefined) {
+      throw new Error(
+        'Memory diagnostics require before and after heap snapshot output paths',
+      );
+    }
+    memoryBefore = pendingBytes(
+      paths.memory.before,
+      capture.memory.before.snapshot.bytes,
+    );
+    memoryAfter = pendingBytes(
+      paths.memory.after,
+      capture.memory.after.snapshot.bytes,
+    );
+  } else if (paths.memory !== undefined) {
+    throw new Error(
+      'Heap snapshot output paths require memory diagnostic mode',
+    );
+  }
   await writeArtifacts([
     measurements,
     ...(observations === undefined ? [] : [observations]),
     ...(trace === undefined ? [] : [trace]),
+    ...(memoryBefore === undefined ? [] : [memoryBefore]),
+    ...(memoryAfter === undefined ? [] : [memoryAfter]),
   ]);
   const written: WrittenJourneyArtifacts = {
     measurements: measurements.integrity,
@@ -127,6 +154,33 @@ export async function writeJourneyArtifacts(
       dataLossOccurred: capture.trace.dataLossOccurred,
       startedAt: capture.trace.startedAt,
       finishedAt: capture.trace.finishedAt,
+    };
+  }
+  if (
+    memoryBefore !== undefined &&
+    memoryAfter !== undefined &&
+    capture.memory !== undefined
+  ) {
+    written.memory = {
+      captureIterations: [...capture.memory.captureIterations],
+      before: {
+        ...memoryBefore.integrity,
+        capturedAt: capture.memory.before.snapshot.capturedAt,
+        format: capture.memory.before.snapshot.format,
+        mediaType: capture.memory.before.snapshot.mediaType,
+        uncompressedSizeBytes:
+          capture.memory.before.snapshot.uncompressedSizeBytes,
+        census: capture.memory.before.census,
+      },
+      after: {
+        ...memoryAfter.integrity,
+        capturedAt: capture.memory.after.snapshot.capturedAt,
+        format: capture.memory.after.snapshot.format,
+        mediaType: capture.memory.after.snapshot.mediaType,
+        uncompressedSizeBytes:
+          capture.memory.after.snapshot.uncompressedSizeBytes,
+        census: capture.memory.after.census,
+      },
     };
   }
   return written;

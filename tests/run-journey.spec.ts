@@ -12,6 +12,13 @@ import {
   type RunJourneyOptions,
 } from '../src/index.js';
 
+function integrity(bytes: Buffer): { sha256: string; sizeBytes: number } {
+  return {
+    sha256: createHash('sha256').update(bytes).digest('hex'),
+    sizeBytes: bytes.length,
+  };
+}
+
 function options(
   cacheProfile: RunJourneyOptions['cacheProfile'],
   cacheObservations: boolean[],
@@ -168,9 +175,28 @@ test('rejects a page lifetime that outlives a cold context', async () => {
 
 test('rejects unimplemented diagnostic modes before launching a browser', async () => {
   const invalid = options('warm', [], new Set());
-  invalid.diagnosticMode = 'memory';
+  invalid.diagnosticMode = 'smoothness';
   await expect(captureJourney(chromium, invalid)).rejects.toThrow(
-    'Unsupported diagnostic mode: memory',
+    'Unsupported diagnostic mode: smoothness',
+  );
+});
+
+test('requires memory diagnostics to span repeated work on one warm page', async () => {
+  const diagnostic = options('warm', [], new Set());
+  diagnostic.diagnosticMode = 'memory';
+
+  await expect(captureJourney(chromium, diagnostic)).rejects.toThrow(
+    'requires a warm cache profile and per-run page reuse',
+  );
+  diagnostic.pageReuse = 'per-run';
+  diagnostic.captureIterations = [1];
+  await expect(captureJourney(chromium, diagnostic)).rejects.toThrow(
+    'requires at least two capture iterations',
+  );
+  diagnostic.measurementIterations = 3;
+  diagnostic.captureIterations = [1, 3];
+  await expect(captureJourney(chromium, diagnostic)).rejects.toThrow(
+    'requires consecutive measured capture iterations',
   );
 });
 
@@ -242,6 +268,56 @@ test('captures a trace only around the selected measured iteration', async () =>
     Date.parse(capture.trace?.finishedAt ?? ''),
   );
   expect(capture.observations).toBeUndefined();
+});
+
+test('captures and writes memory evidence around repeated same-page iterations', async ({}, testInfo) => {
+  const diagnostic = options('warm', [], new Set());
+  diagnostic.diagnosticMode = 'memory';
+  diagnostic.pageReuse = 'per-run';
+  diagnostic.measurementIterations = 3;
+  diagnostic.captureIterations = [1, 2, 3];
+  diagnostic.journey = async (page) => {
+    await page.evaluate(() => {
+      const target = window as Window & { __retained?: HTMLElement[] };
+      const element = document.createElement('button');
+      element.addEventListener('click', () => undefined);
+      document.body.append(element);
+      target.__retained = [...(target.__retained ?? []), element];
+    });
+    return [{ name: 'ui.search.action_to_visible_ms', durationMs: 1 }];
+  };
+
+  const capture = await captureJourney(chromium, diagnostic);
+  const measurementPath = testInfo.outputPath('memory', 'measurements.json');
+  const beforePath = testInfo.outputPath('memory', 'before.heapsnapshot.gz');
+  const afterPath = testInfo.outputPath('memory', 'after.heapsnapshot.gz');
+  const written = await writeJourneyArtifacts(
+    {
+      measurements: measurementPath,
+      memory: { before: beforePath, after: afterPath },
+    },
+    capture,
+  );
+  const beforeBytes = await readFile(beforePath);
+  const afterBytes = await readFile(afterPath);
+
+  expect(capture.memory?.captureIterations).toEqual([1, 2, 3]);
+  expect(capture.memory?.after.census.dom.nodes).toBeGreaterThan(
+    capture.memory?.before.census.dom.nodes ?? Number.POSITIVE_INFINITY,
+  );
+  expect(beforeBytes.subarray(0, 2)).toEqual(Buffer.from([0x1f, 0x8b]));
+  expect(afterBytes.subarray(0, 2)).toEqual(Buffer.from([0x1f, 0x8b]));
+  expect(written.memory?.captureIterations).toEqual([1, 2, 3]);
+  expect(written.memory?.before).toMatchObject({
+    ...integrity(beforeBytes),
+    format: 'chrome-heap-snapshot-json-gzip',
+    mediaType: 'application/gzip',
+  });
+  expect(written.memory?.after).toMatchObject({
+    ...integrity(afterBytes),
+    format: 'chrome-heap-snapshot-json-gzip',
+    mediaType: 'application/gzip',
+  });
 });
 
 test('writes immutable deterministic artifact bytes and reports integrity', async ({}, testInfo) => {

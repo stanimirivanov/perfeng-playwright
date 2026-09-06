@@ -18,51 +18,54 @@ interface Command {
   outputPath: string;
   observationsOutputPath?: string;
   traceOutputPath?: string;
+  heapSnapshotBeforeOutputPath?: string;
+  heapSnapshotAfterOutputPath?: string;
 }
+
+const usage =
+  'Usage: perfeng-playwright run --config FILE --output FILE [--observations-output FILE | --trace-output FILE | --heap-snapshot-before-output FILE --heap-snapshot-after-output FILE]';
 
 export function parseCommand(args: string[]): Command {
   const configurationPath = args[2];
   const outputPath = args[4];
-  const hasDiagnosticOutput = args.length === 7;
-  const diagnosticFlag = hasDiagnosticOutput ? args[5] : undefined;
-  const diagnosticOutputPath = hasDiagnosticOutput ? args[6] : undefined;
   if (
-    (args.length !== 5 && !hasDiagnosticOutput) ||
+    args.length < 5 ||
+    (args.length - 5) % 2 !== 0 ||
     args[0] !== 'run' ||
     args[1] !== '--config' ||
     args[3] !== '--output' ||
-    (hasDiagnosticOutput &&
-      diagnosticFlag !== '--observations-output' &&
-      diagnosticFlag !== '--trace-output') ||
     configurationPath === undefined ||
     configurationPath === '' ||
     outputPath === undefined ||
-    outputPath === '' ||
-    (hasDiagnosticOutput &&
-      (diagnosticOutputPath === undefined || diagnosticOutputPath === ''))
+    outputPath === ''
   ) {
-    throw new Error(
-      'Usage: perfeng-playwright run --config FILE --output FILE [--observations-output FILE | --trace-output FILE]',
-    );
+    throw new Error(usage);
   }
-  if (diagnosticOutputPath === undefined) {
-    return { configurationPath, outputPath };
+  const command: Command = { configurationPath, outputPath };
+  const assigned = new Set<string>();
+  for (let index = 5; index < args.length; index += 2) {
+    const flag = args[index];
+    const value = args[index + 1];
+    if (flag === undefined || value === undefined || value === '') {
+      throw new Error(usage);
+    }
+    if (assigned.has(flag)) {
+      throw new Error(`Duplicate command-line option: ${flag}`);
+    }
+    assigned.add(flag);
+    if (flag === '--observations-output') {
+      command.observationsOutputPath = value;
+    } else if (flag === '--trace-output') {
+      command.traceOutputPath = value;
+    } else if (flag === '--heap-snapshot-before-output') {
+      command.heapSnapshotBeforeOutputPath = value;
+    } else if (flag === '--heap-snapshot-after-output') {
+      command.heapSnapshotAfterOutputPath = value;
+    } else {
+      throw new Error(usage);
+    }
   }
-  if (diagnosticFlag === '--observations-output') {
-    return {
-      configurationPath,
-      outputPath,
-      observationsOutputPath: diagnosticOutputPath,
-    };
-  }
-  if (diagnosticFlag === '--trace-output') {
-    return {
-      configurationPath,
-      outputPath,
-      traceOutputPath: diagnosticOutputPath,
-    };
-  }
-  return { configurationPath, outputPath };
+  return command;
 }
 
 function artifactPaths(
@@ -70,7 +73,12 @@ function artifactPaths(
   mode: DiagnosticMode,
 ): JourneyArtifactPaths {
   if (mode === 'lightweight') {
-    if (command.observationsOutputPath === undefined) {
+    if (
+      command.observationsOutputPath === undefined ||
+      command.traceOutputPath !== undefined ||
+      command.heapSnapshotBeforeOutputPath !== undefined ||
+      command.heapSnapshotAfterOutputPath !== undefined
+    ) {
       throw new Error(
         'Lightweight diagnostics require --observations-output FILE',
       );
@@ -81,7 +89,12 @@ function artifactPaths(
     };
   }
   if (mode === 'trace') {
-    if (command.traceOutputPath === undefined) {
+    if (
+      command.traceOutputPath === undefined ||
+      command.observationsOutputPath !== undefined ||
+      command.heapSnapshotBeforeOutputPath !== undefined ||
+      command.heapSnapshotAfterOutputPath !== undefined
+    ) {
       throw new Error('Trace diagnostics require --trace-output FILE');
     }
     return {
@@ -89,9 +102,30 @@ function artifactPaths(
       trace: command.traceOutputPath,
     };
   }
+  if (mode === 'memory') {
+    if (
+      command.heapSnapshotBeforeOutputPath === undefined ||
+      command.heapSnapshotAfterOutputPath === undefined ||
+      command.observationsOutputPath !== undefined ||
+      command.traceOutputPath !== undefined
+    ) {
+      throw new Error(
+        'Memory diagnostics require --heap-snapshot-before-output FILE and --heap-snapshot-after-output FILE',
+      );
+    }
+    return {
+      measurements: command.outputPath,
+      memory: {
+        before: command.heapSnapshotBeforeOutputPath,
+        after: command.heapSnapshotAfterOutputPath,
+      },
+    };
+  }
   if (
     command.observationsOutputPath !== undefined ||
-    command.traceOutputPath !== undefined
+    command.traceOutputPath !== undefined ||
+    command.heapSnapshotBeforeOutputPath !== undefined ||
+    command.heapSnapshotAfterOutputPath !== undefined
   ) {
     throw new Error('Diagnostic output requires a diagnostic mode');
   }

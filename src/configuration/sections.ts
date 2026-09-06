@@ -26,7 +26,12 @@ const workloadProfiles = new Set<string>([
 ]);
 const cacheProfiles = new Set<string>(['cold', 'warm']);
 const pageReusePolicies = new Set<string>(['per-iteration', 'per-run']);
-const diagnosticModes = new Set<string>(['baseline', 'lightweight', 'trace']);
+const diagnosticModes = new Set<string>([
+  'baseline',
+  'lightweight',
+  'trace',
+  'memory',
+]);
 
 export function parseWorkload(value: unknown): WorkloadIdentity {
   const source = record(value, 'workload');

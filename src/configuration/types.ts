@@ -20,7 +20,7 @@ export interface RunnerConfiguration {
   };
   diagnosticMode: DiagnosticMode;
   diagnostics?: {
-    captureIterations: [number];
+    captureIterations: number[];
   };
   environment: EnvironmentIdentity;
   target: {
