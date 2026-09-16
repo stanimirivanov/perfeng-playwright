@@ -4,4 +4,11 @@
 /playwright-report/
 /test-results/
 /results/
+/.cache/
+/.pnpm-store/
+/coverage/
 *.tsbuildinfo
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

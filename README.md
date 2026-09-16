@@ -1,5 +1,17 @@
 # perfeng-playwright
 
+## TL;DR
+
+- Runs versioned browser journeys and records semantic interaction durations using the browser
+  Performance clock.
+- Supports cold/warm lifecycle profiles plus bounded lightweight, trace, memory and smoothness
+  diagnostics without issuing performance verdicts.
+- Produces immutable measurement, diagnostic and provenance receipts; upload and analysis remain
+  separate platform responsibilities.
+- Comparable performance runs target the declared native Windows laptop worker; Linux CI verifies
+  behavior but is not a performance-equivalent environment.
+- Uses Node.js 24.18.0, pnpm 11.19.0 and Playwright 1.62.1. Run `make validate` or `pnpm validate`.
+
 Standalone Playwright performance runner and browser-side semantic timing
 library. This repository owns browser journeys, browser execution, and raw
 browser measurements. Scheduling, run lifecycle, artifact storage,
@@ -23,6 +35,11 @@ on domain types directly instead of importing through those façades.
 
 ## Development
 
+Contributor workflow and repository policy are defined in
+[CONTRIBUTING.md](CONTRIBUTING.md). Browser-runner design and verification rules are in the
+[engineering standards](docs/development/engineering-standards.md), and durable decisions are
+recorded in [ADRs](docs/decisions/README.md).
+
 Use Node.js 24.18.0 and the pinned pnpm version. Install the Chromium build
 managed by the pinned Playwright package, then run the complete validation:
 
@@ -30,8 +47,10 @@ managed by the pinned Playwright package, then run the complete validation:
 corepack enable
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
-pnpm validate
+make validate
 ```
+
+`pnpm validate` runs the same repository checks without the Make wrapper.
 
 Validation checks formatting, linting, strict TypeScript compilation, the
 distributable library build, and browser behavior. Failed browser tests retain
