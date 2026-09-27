@@ -27,6 +27,8 @@ Implementation is organized by responsibility:
 - `src/observation`: page-observation state, browser installation, and snapshot projection;
 - `src/trace`: bounded Chromium CDP performance-trace capture and stream handling;
 - `src/memory`: garbage-collected memory census and heap-snapshot capture;
+- `src/native-worker`: strict Native Worker API transport, presence configuration, and
+  qualification-evidence projection;
 - `src/smoothness`: rendering-focused Chromium trace capture.
 
 The short files at the `src` root are package entry points, command and
@@ -56,6 +58,22 @@ Validation checks formatting, linting, strict TypeScript compilation, the
 distributable library build, and browser behavior. Failed browser tests retain
 traces, screenshots, and video in ignored local output directories; CI uploads
 that evidence only when validation fails.
+
+## Native worker presence
+
+The separately packaged `perfeng-playwright-worker` command can authenticate a
+clean Windows source checkout and report its current capabilities and immutable
+qualification evidence to the Native Worker API. This first worker slice always
+reports `UNAVAILABLE`: it proves identity, contract, platform, provenance, and
+server qualification wiring without claiming that the still-unimplemented lease
+execution loop can accept work.
+
+Configuration and exact operating instructions are in the
+[native worker presence guide](docs/native-worker-presence.md). The client pins
+perfeng-contracts bundle 0.16.0 at revision
+`af98d52cc09e0650bc73daf33439a12d5ad62ef7`, matching the control plane. It
+requires HTTPS, refuses redirects, bounds response bytes, and never reads a
+credential from JSON or a command-line argument.
 
 ## Semantic measurements
 
