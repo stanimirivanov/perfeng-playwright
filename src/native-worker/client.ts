@@ -29,6 +29,20 @@ const qualificationValues = new Set<QualificationStatus>([
   'STALE',
 ]);
 
+export class PresenceRequestFailure extends Error {
+  readonly retryable: boolean;
+  readonly retryAfterSeconds?: number;
+
+  constructor(message: string, retryable: boolean, retryAfterSeconds?: number) {
+    super(message);
+    this.name = 'PresenceRequestFailure';
+    this.retryable = retryable;
+    if (retryAfterSeconds !== undefined) {
+      this.retryAfterSeconds = retryAfterSeconds;
+    }
+  }
+}
+
 export interface PresenceRequest {
   controlPlaneOrigin: string;
   token: string;
@@ -62,16 +76,39 @@ export async function reportWorkerPresence(
       options,
     );
   } catch {
-    throw new Error('Native worker presence request failed');
+    throw new PresenceRequestFailure(
+      'Native worker presence request failed',
+      request.signal?.aborted !== true,
+    );
   }
   if (response.status !== 200) {
     await discardBody(response);
-    throw new Error(
+    const retryAfterSeconds = retryAfter(response);
+    throw new PresenceRequestFailure(
       `Native worker presence request was rejected with status ${String(response.status)}`,
+      response.status === 429 ||
+        response.status === 500 ||
+        response.status === 503,
+      retryAfterSeconds,
     );
   }
 
   return parsePresenceStatus(await readBoundedBody(response));
+}
+
+function retryAfter(response: Response): number | undefined {
+  if (response.status !== 429 && response.status !== 503) {
+    return undefined;
+  }
+  const value = response.headers.get('retry-after');
+  if (value === null) {
+    return undefined;
+  }
+  if (!/^(?:[1-9]|[1-5][0-9]|60)$/.test(value)) {
+    throw new Error('Native worker presence response has invalid Retry-After');
+  }
+
+  return Number(value);
 }
 
 function validateToken(token: string): void {
