@@ -110,6 +110,24 @@ export interface NativeLease {
   artifactPlan: NativeArtifactPlanItem[];
 }
 
+export type NativeExecutionPhase =
+  'PREPARING' | 'RUNNING' | 'UPLOADING' | 'FINALIZING';
+
+interface NativeLeaseRenewalFields {
+  leaseId: string;
+  attemptId: string;
+  runRevision: number;
+  serverTime: string;
+  expiresAt: string;
+  renewAfterSeconds: number;
+}
+
+export type NativeLeaseRenewal = NativeLeaseRenewalFields &
+  (
+    | { cancellationRequested: false }
+    | { cancellationRequested: true; stopBy: string }
+  );
+
 export interface PresenceInputs {
   configuration: WorkerPresenceConfiguration;
   source: SourceCheckoutArtifact;
