@@ -63,7 +63,8 @@ that evidence only when validation fails.
 
 The separately packaged `perfeng-playwright-worker` command can authenticate a
 clean Windows source checkout and report its current capabilities and immutable
-qualification evidence to the Native Worker API. This first worker slice always
+qualification evidence to the Native Worker API. It supports one-shot presence
+checks and a cancellable, server-paced heartbeat. This worker slice always
 reports `UNAVAILABLE`: it proves identity, contract, platform, provenance, and
 server qualification wiring without claiming that the still-unimplemented lease
 execution loop can accept work.

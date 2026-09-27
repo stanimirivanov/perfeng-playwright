@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 import {
+  PresenceRequestFailure,
   parsePresenceStatus,
   reportWorkerPresence,
 } from '../src/native-worker/client.js';
@@ -191,6 +192,56 @@ test('keeps credentials and server bodies out of request failures', async () => 
   expect(String(error)).not.toContain('rejected worker-secret');
 });
 
+test('classifies transient presence failures without exposing response bodies', async () => {
+  const send = (() =>
+    Promise.resolve(
+      new Response('temporarily unavailable', {
+        status: 503,
+        headers: { 'retry-after': '17' },
+      }),
+    )) as typeof fetch;
+
+  const failure = await reportWorkerPresence(
+    {
+      controlPlaneOrigin: configuration.controlPlaneOrigin,
+      token: 'worker-secret',
+      presence: presence(),
+    },
+    send,
+  ).then(
+    () => undefined,
+    (reason: unknown) => reason,
+  );
+
+  expect(failure).toBeInstanceOf(PresenceRequestFailure);
+  expect(failure).toMatchObject({
+    retryable: true,
+    retryAfterSeconds: 17,
+  });
+  expect(String(failure)).not.toContain('temporarily unavailable');
+});
+
+test('rejects invalid Retry-After values from transient responses', async () => {
+  const send = (() =>
+    Promise.resolve(
+      new Response(null, {
+        status: 429,
+        headers: { 'retry-after': '120' },
+      }),
+    )) as typeof fetch;
+
+  await expect(
+    reportWorkerPresence(
+      {
+        controlPlaneOrigin: configuration.controlPlaneOrigin,
+        token: 'worker-secret',
+        presence: presence(),
+      },
+      send,
+    ),
+  ).rejects.toThrow('invalid Retry-After');
+});
+
 test('rejects oversized and structurally invalid presence responses', async () => {
   const oversized = (() =>
     Promise.resolve(
@@ -254,7 +305,16 @@ test('pins byte-identical Native Worker presence fixtures', async () => {
 test('parses the isolated worker presence command and requires a credential', async () => {
   expect(
     parseWorkerCommand(['presence', '--config', 'worker-presence.json']),
-  ).toEqual({ configurationPath: 'worker-presence.json' });
+  ).toEqual({
+    action: 'presence',
+    configurationPath: 'worker-presence.json',
+  });
+  expect(
+    parseWorkerCommand(['heartbeat', '--config', 'worker-presence.json']),
+  ).toEqual({
+    action: 'heartbeat',
+    configurationPath: 'worker-presence.json',
+  });
   expect(() => parseWorkerCommand(['run'])).toThrow('Usage:');
   await expect(
     workerMain(['presence', '--config', 'missing.json'], {}),

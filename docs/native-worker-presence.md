@@ -9,7 +9,7 @@
   HTTPS control-plane origin.
 - This release always reports `UNAVAILABLE`; it validates identity and qualification wiring but
   cannot acquire or execute a Run yet.
-- Treat `authorizedToAcquire` as server policy, not proof that this presence-only process is ready
+- Treat `authorizedToAcquire` as server policy, not proof that this heartbeat-only process is ready
   to accept work.
 
 The presence command is the first executable slice of the outbound native Windows agent selected
@@ -71,13 +71,32 @@ The command never prints the credential, authorization header, server error body
 response content. It refuses redirects so a bearer credential cannot be forwarded to another
 origin.
 
+## Run heartbeats
+
+Use the same reviewed configuration and protected process credential for the long-running mode:
+
+```powershell
+node dist/worker-cli.js heartbeat --config C:\path\to\native-worker-presence.json
+```
+
+The worker refreshes clean-checkout provenance before every report and schedules the next report
+within the final ten percent of the server's `nextHeartbeatSeconds` interval. `SIGINT` and
+`SIGTERM` stop both an in-flight request and the next scheduled wait. A request is bounded to 15
+seconds.
+
+Transport failures and HTTP 500 responses use exponential retry bases from five to 60 seconds,
+jittered earlier by no more than ten percent. HTTP 429 and 503 responses may provide an integer
+`Retry-After` value from one to 60 seconds; the worker waits at least that long. Authentication,
+contract, malformed response, and other permanent errors terminate the process for operator
+attention. Status output and retry messages contain no credentials or server response bodies.
+
 ## Current boundary
 
-This command is intentionally one-shot and always sends `availability: "UNAVAILABLE"`. It does not
-heartbeat, acquire or renew leases, observe cancellation, run a browser, upload evidence, register
-artifacts, or report a terminal outcome. Those operations require later reviewed slices. Do not
-wrap this command in a loop and reinterpret it as a ready worker; the server heartbeat interval is
-returned for the future lifecycle implementation.
+Both modes always send `availability: "UNAVAILABLE"`. The heartbeat maintains presence and observes
+operator cancellation, but it does not acquire or renew leases, run a browser, upload evidence,
+register artifacts, or report a terminal outcome. Those operations require later reviewed slices.
+Do not reinterpret a running heartbeat as a ready worker; `authorizedToAcquire` remains server
+policy and the process deliberately does not act on it.
 
 The vendored presence examples and lock under `vendor/contracts` pin byte-identical fixtures from
 perfeng-contracts bundle 0.16.0 and record the reviewed full OpenAPI checksum. Updating the API
