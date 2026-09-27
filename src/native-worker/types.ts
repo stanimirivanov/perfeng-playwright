@@ -113,6 +113,15 @@ export interface NativeLease {
 export type NativeExecutionPhase =
   'PREPARING' | 'RUNNING' | 'UPLOADING' | 'FINALIZING';
 
+export type NativeLeaseReleaseReason =
+  | 'CANCELLATION_REQUESTED'
+  | 'LEASE_LOST'
+  | 'WORKER_SHUTDOWN'
+  | 'PREPARATION_FAILED';
+
+export type NativeLeaseMutationFailureKind =
+  'cancelled' | 'conflict' | 'lost' | 'permanent' | 'retryable';
+
 interface NativeLeaseRenewalFields {
   leaseId: string;
   attemptId: string;
