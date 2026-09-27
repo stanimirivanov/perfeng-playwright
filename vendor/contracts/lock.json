@@ -1,0 +1,12 @@
+{
+  "sourceRepository": "https://github.com/stanimirivanov/perfeng-contracts",
+  "sourceRevision": "af98d52cc09e0650bc73daf33439a12d5ad62ef7",
+  "bundleVersion": "0.16.0",
+  "nativeWorkerApiVersion": "1.0.0",
+  "transformation": "Presence examples copied byte-for-byte from the reviewed contract revision; the OpenAPI checksum records the complete reviewed API.",
+  "files": {
+    "native-worker/v1/examples/presence.json": "0ef59c9e1dc5ca552b8841015ba3606ace2f43d7a3e91844d4e6df9599fb3f03",
+    "native-worker/v1/examples/presence-status.json": "24bead9a7db89549dff75360ea721b9579007702b10a0f70407265fa9a9ba9fd"
+  },
+  "reviewedOpenApiSha256": "c6c5954823a101de47eda19137c609e06565545e77b74bcd9989d518eefe94f1"
+}
