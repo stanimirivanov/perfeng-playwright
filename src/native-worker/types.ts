@@ -58,6 +58,58 @@ export interface WorkerPresenceStatus {
   authorizedToAcquire: boolean;
 }
 
+export type WorkerDiagnosticMode =
+  'lightweight' | 'trace' | 'heap' | 'cpu-profile';
+
+export type NativeExecutionArtifact =
+  | {
+      kind: 'source-checkout';
+      repository: string;
+      revision: string;
+      lockfile: string;
+      lockfileSha256: string;
+    }
+  | {
+      kind: 'release-archive';
+      url: string;
+      archiveSha256: string;
+      executableSha256: string;
+    };
+
+export interface NativeExecutionAssignment {
+  catalogueTestId: string;
+  workloadId: string;
+  profile: string;
+  target: {
+    environmentId: string;
+    baseUrl: string;
+  };
+  browser: BrowserFamily;
+  diagnosticMode: WorkerDiagnosticMode;
+  executionArtifact: NativeExecutionArtifact;
+}
+
+export interface NativeArtifactPlanItem {
+  slot: string;
+  kind: string;
+  mediaType: string;
+  format: string;
+  maximumBytes: number;
+  required: boolean;
+}
+
+export interface NativeLease {
+  leaseId: string;
+  attemptId: string;
+  runId: string;
+  runRevision: number;
+  issuedAt: string;
+  expiresAt: string;
+  renewAfterSeconds: number;
+  assignment: NativeExecutionAssignment;
+  artifactPlan: NativeArtifactPlanItem[];
+}
+
 export interface PresenceInputs {
   configuration: WorkerPresenceConfiguration;
   source: SourceCheckoutArtifact;
