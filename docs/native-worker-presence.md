@@ -102,15 +102,20 @@ The vendored presence examples and lock under `vendor/contracts` pin byte-identi
 perfeng-contracts bundle 0.16.0 and record the reviewed full OpenAPI checksum. Updating the API
 requires an explicit contract repin and compatibility review rather than accepting a moving schema.
 
-The package also contains contract-validated lease acquisition and renewal transports needed by
-the next worker lifecycle slice. Acquisition distinguishes an acquired lease from a `204` idle
-response, validates the complete assignment and artifact plan, and keeps the `X-Perfeng-Lease`
-capability out of JSON and diagnostic inspection. Each long-poll request is bounded to the
-requested server wait plus five seconds.
+The package also contains contract-validated lease acquisition, renewal and release transports
+needed by the next worker lifecycle slice. Acquisition distinguishes an acquired lease from a
+`204` idle response, validates the complete assignment and artifact plan, and keeps the
+`X-Perfeng-Lease` capability out of JSON and diagnostic inspection. Each long-poll request is
+bounded to the requested server wait plus five seconds.
 
 Renewal sends the current attempt fence and execution phase, is bounded to five seconds, validates
 the authoritative revision and expiry schedule, and represents cancellation as a distinct state
 with a bounded `stopBy` deadline. Conflict and lost-authority responses remain distinct from
-retryable transport failures. The CLI does not call either transport yet: acquiring work before
-release, process-tree cancellation, and execution preparation are composed would abandon authority
-until expiry and would contradict the worker's `UNAVAILABLE` presence.
+retryable transport failures. Release sends the same attempt fence and one closed reason, is
+idempotent for the same accepted reason, and optionally carries a bounded operator-safe message.
+Cancellation release confirms that the complete process tree has already stopped; the transport
+does not make that claim itself.
+
+The CLI does not call these lease transports yet. Acquiring work before process-tree cancellation,
+execution preparation, and lifecycle coordination are composed could still abandon authority or
+misrepresent execution, and would contradict the worker's `UNAVAILABLE` presence.

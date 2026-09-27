@@ -18,7 +18,11 @@ import {
   readBoundedResponse,
   validateWorkerCredential,
 } from './transport.js';
-import type { NativeExecutionPhase, NativeLeaseRenewal } from './types.js';
+import type {
+  NativeExecutionPhase,
+  NativeLeaseMutationFailureKind,
+  NativeLeaseRenewal,
+} from './types.js';
 
 const renewalTimeoutMilliseconds = 5_000;
 const executionPhases = new Set<NativeExecutionPhase>([
@@ -28,16 +32,13 @@ const executionPhases = new Set<NativeExecutionPhase>([
   'FINALIZING',
 ]);
 
-export type LeaseRenewalFailureKind =
-  'cancelled' | 'conflict' | 'lost' | 'permanent' | 'retryable';
-
 export class LeaseRenewalFailure extends Error {
-  readonly kind: LeaseRenewalFailureKind;
+  readonly kind: NativeLeaseMutationFailureKind;
   readonly retryAfterSeconds?: number;
 
   constructor(
     message: string,
-    kind: LeaseRenewalFailureKind,
+    kind: NativeLeaseMutationFailureKind,
     retryAfterSeconds?: number,
   ) {
     super(message);
@@ -192,7 +193,7 @@ function renewalFailure(response: Response): LeaseRenewalFailure {
     response.status === 429 || response.status === 503
       ? parseRetryAfter(response, false)
       : undefined;
-  let kind: LeaseRenewalFailureKind = 'permanent';
+  let kind: NativeLeaseMutationFailureKind = 'permanent';
   if (response.status === 409) {
     kind = 'conflict';
   } else if (response.status === 410) {
