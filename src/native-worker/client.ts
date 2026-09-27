@@ -5,6 +5,12 @@ import {
   requiredString,
 } from '../configuration/primitives.js';
 import { normalizeControlPlaneOrigin } from './configuration.js';
+import {
+  discardResponse,
+  parseRetryAfter,
+  readBoundedResponse,
+  validateWorkerCredential,
+} from './transport.js';
 import type {
   QualificationDecision,
   QualificationStatus,
@@ -13,11 +19,9 @@ import type {
   WorkerPresenceStatus,
 } from './types.js';
 
-const maximumTokenBytes = 4096;
-const maximumResponseBytes = 64 * 1024;
 const identifierPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const timestampPattern =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:[0-5]\d(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/;
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 const availabilityValues = new Set<WorkerAvailability>([
   'AVAILABLE',
   'DRAINING',
@@ -54,7 +58,7 @@ export async function reportWorkerPresence(
   request: PresenceRequest,
   send: typeof fetch = fetch,
 ): Promise<WorkerPresenceStatus> {
-  validateToken(request.token);
+  validateWorkerCredential(request.token);
   const origin = normalizeControlPlaneOrigin(request.controlPlaneOrigin);
   const options: RequestInit = {
     method: 'POST',
@@ -82,7 +86,7 @@ export async function reportWorkerPresence(
     );
   }
   if (response.status !== 200) {
-    await discardBody(response);
+    await discardResponse(response);
     const retryAfterSeconds = retryAfter(response);
     throw new PresenceRequestFailure(
       `Native worker presence request was rejected with status ${String(response.status)}`,
@@ -93,74 +97,14 @@ export async function reportWorkerPresence(
     );
   }
 
-  return parsePresenceStatus(await readBoundedBody(response));
+  return parsePresenceStatus(await readBoundedResponse(response));
 }
 
 function retryAfter(response: Response): number | undefined {
   if (response.status !== 429 && response.status !== 503) {
     return undefined;
   }
-  const value = response.headers.get('retry-after');
-  if (value === null) {
-    return undefined;
-  }
-  if (!/^(?:[1-9]|[1-5][0-9]|60)$/.test(value)) {
-    throw new Error('Native worker presence response has invalid Retry-After');
-  }
-
-  return Number(value);
-}
-
-function validateToken(token: string): void {
-  if (
-    token.length < 1 ||
-    Buffer.byteLength(token, 'utf8') > maximumTokenBytes ||
-    /[\s,]/u.test(token)
-  ) {
-    throw new Error('Native worker credential is missing or invalid');
-  }
-}
-
-async function readBoundedBody(response: Response): Promise<string> {
-  if (response.body === null) {
-    throw new Error('Native worker presence response is empty');
-  }
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    let result = await reader.read();
-    while (!result.done) {
-      const { value } = result;
-      size += value.byteLength;
-      if (size > maximumResponseBytes) {
-        await reader.cancel().catch(() => undefined);
-        throw new Error('Native worker presence response exceeds 64 KiB');
-      }
-      chunks.push(value);
-      result = await reader.read();
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch {
-    throw new Error('Native worker presence response must be UTF-8');
-  }
-}
-
-async function discardBody(response: Response): Promise<void> {
-  if (response.body !== null) {
-    await response.body.cancel().catch(() => undefined);
-  }
+  return parseRetryAfter(response, false);
 }
 
 export function parsePresenceStatus(text: string): WorkerPresenceStatus {

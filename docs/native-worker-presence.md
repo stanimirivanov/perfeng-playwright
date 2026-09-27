@@ -101,3 +101,11 @@ policy and the process deliberately does not act on it.
 The vendored presence examples and lock under `vendor/contracts` pin byte-identical fixtures from
 perfeng-contracts bundle 0.16.0 and record the reviewed full OpenAPI checksum. Updating the API
 requires an explicit contract repin and compatibility review rather than accepting a moving schema.
+
+The package also contains the contract-validated lease acquisition transport needed by the next
+worker lifecycle slice. It distinguishes an acquired lease from a `204` idle response, validates
+the complete assignment and artifact plan, and keeps the `X-Perfeng-Lease` capability out of JSON
+and diagnostic inspection. Each long-poll request is bounded to the requested server wait plus five
+seconds. The CLI does not call it yet: acquiring work before renewal, release, process-tree
+cancellation, and execution preparation are composed would abandon authority until expiry and
+would contradict the worker's `UNAVAILABLE` presence.
