@@ -21,11 +21,13 @@ const credentialVariable = 'PERFENG_NATIVE_WORKER_TOKEN';
 const usage =
   'Usage: perfeng-playwright-worker <presence|heartbeat> --config FILE';
 
+/** Parsed action and configuration path accepted by the Native Worker executable. */
 export interface WorkerCommand {
   action: 'presence' | 'heartbeat';
   configurationPath: string;
 }
 
+/** Parses the Native Worker executable's presence or heartbeat invocation. */
 export function parseWorkerCommand(args: string[]): WorkerCommand {
   if (
     args.length !== 3 ||
@@ -40,6 +42,7 @@ export function parseWorkerCommand(args: string[]): WorkerCommand {
   return { action: args[0], configurationPath: args[2] };
 }
 
+/** Reports one presence document or runs a cancellable, server-paced heartbeat. */
 export async function workerMain(
   args: string[],
   environment: NodeJS.ProcessEnv = process.env,

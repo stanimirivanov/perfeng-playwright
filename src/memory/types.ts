@@ -1,3 +1,4 @@
+/** Point-in-time JavaScript and DOM memory counters surrounding a heap snapshot. */
 export interface MemoryCensus {
   capturedAt: string;
   javascriptHeap: {
@@ -13,6 +14,7 @@ export interface MemoryCensus {
   };
 }
 
+/** Bounded, gzip-compressed Chrome heap-snapshot bytes and capture metadata. */
 export interface HeapSnapshot {
   capturedAt: string;
   format: 'chrome-heap-snapshot-json-gzip';
@@ -21,17 +23,20 @@ export interface HeapSnapshot {
   bytes: Buffer;
 }
 
+/** One memory census and the heap snapshot captured at the same boundary. */
 export interface MemoryEvidence {
   census: MemoryCensus;
   snapshot: HeapSnapshot;
 }
 
+/** Result of an owned action enclosed by before-and-after memory evidence. */
 export interface MemoryCapture<T> {
   result: T;
   before: MemoryEvidence;
   after: MemoryEvidence;
 }
 
+/** Resource bounds applied while capturing Chrome heap snapshots. */
 export interface MemoryCaptureOptions {
   maxSnapshotBytes?: number;
   snapshotTimeoutMs?: number;

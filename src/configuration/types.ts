@@ -7,6 +7,7 @@ import type {
   WorkloadIdentity,
 } from '../journey/types.js';
 
+/** Closed, versioned input contract for one browser-runner execution. */
 export interface RunnerConfiguration {
   schemaVersion: 2;
   runId: string;

@@ -1,8 +1,12 @@
 import type { SourceCheckoutArtifact } from '../source-checkout.js';
 
+/** Host architectures accepted by the Native Worker contract. */
 export type WorkerArchitecture = 'x64' | 'arm64';
+/** Browser product families a Native Worker may advertise. */
 export type BrowserFamily = 'chromium' | 'chrome' | 'edge';
+/** Server-authoritative scheduling availability of a Native Worker. */
 export type WorkerAvailability = 'AVAILABLE' | 'DRAINING' | 'UNAVAILABLE';
+/** Qualification outcome for the reported environment and runner provenance. */
 export type QualificationStatus = 'QUALIFIED' | 'UNQUALIFIED' | 'STALE';
 
 export interface WorkerPresenceConfiguration {
@@ -43,12 +47,14 @@ export interface WorkerPresence {
   };
 }
 
+/** Server decision explaining whether the reported worker is qualified. */
 export interface QualificationDecision {
   status: QualificationStatus;
   reasons: string[];
   validUntil?: string;
 }
 
+/** Server acknowledgement and next-heartbeat instruction for worker presence. */
 export interface WorkerPresenceStatus {
   workerId: string;
   serverTime: string;

@@ -11,6 +11,7 @@ import type {
 } from './types.js';
 import type { SourceCheckoutArtifact } from '../source-checkout.js';
 
+/** Immutable destinations for measurement, receipt, and optional diagnostic artifacts. */
 export interface JourneyArtifactPaths {
   measurements: string;
   receipt: string;

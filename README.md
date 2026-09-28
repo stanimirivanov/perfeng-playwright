@@ -40,8 +40,9 @@ on domain types directly instead of importing through those façades.
 
 Contributor workflow and repository policy are defined in
 [CONTRIBUTING.md](CONTRIBUTING.md). Browser-runner design and verification rules are in the
-[engineering standards](docs/development/engineering-standards.md), and durable decisions are
-recorded in [ADRs](docs/decisions/README.md).
+[engineering standards](docs/development/engineering-standards.md), the module model and dependency
+direction are in the [architecture guide](docs/development/architecture.md), and durable decisions
+are recorded in [ADRs](docs/decisions/README.md).
 
 Use Node.js 24.18.0 and the pinned pnpm version. Install the Chromium build
 managed by the pinned Playwright package, then run the complete validation:
@@ -55,10 +56,9 @@ make validate
 
 `pnpm validate` runs the same repository checks without the Make wrapper.
 
-Validation checks formatting, linting, strict TypeScript compilation, the
-distributable library build, and browser behavior. Failed browser tests retain
-traces, screenshots, and video in ignored local output directories; CI uploads
-that evidence only when validation fails.
+Validation checks formatting, linting, required public TSDoc, strict TypeScript compilation, the
+distributable library build, and browser behavior. Failed browser tests retain traces, screenshots,
+and video in ignored local output directories; CI uploads that evidence only when validation fails.
 
 ## Native worker presence
 

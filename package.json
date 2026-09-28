@@ -22,13 +22,14 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "docs:check": "typedoc --emit none",
     "run": "node dist/cli.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "test": "playwright test",
     "typecheck": "tsc -p tsconfig.json",
-    "validate": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm build && pnpm test"
+    "validate": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm docs:check && pnpm build && pnpm test"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -38,6 +39,7 @@
     "eslint-plugin-playwright": "2.11.0",
     "globals": "17.11.0",
     "prettier": "3.9.6",
+    "typedoc": "0.28.20",
     "typescript": "6.0.3",
     "typescript-eslint": "8.69.0"
   }

@@ -17,6 +17,7 @@ import {
   type SourceCheckoutArtifact,
 } from './source-checkout.js';
 
+/** Parsed invocation of the measurement-runner executable. */
 interface Command {
   configurationPath: string;
   outputPath: string;
@@ -30,6 +31,7 @@ interface Command {
 const usage =
   'Usage: perfeng-playwright run --config FILE --output FILE --receipt-output FILE [--observations-output FILE | --trace-output FILE | --heap-snapshot-before-output FILE --heap-snapshot-after-output FILE]';
 
+/** Parses the closed positional and flag grammar accepted by the runner executable. */
 export function parseCommand(args: string[]): Command {
   const configurationPath = args[2];
   const outputPath = args[4];
@@ -150,6 +152,7 @@ function artifactPaths(
   };
 }
 
+/** Executes one configured journey and publishes its immutable local artifacts. */
 export async function main(
   args: string[],
   inspectCheckout: () => Promise<SourceCheckoutArtifact> = inspectSourceCheckout,
