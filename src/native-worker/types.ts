@@ -157,6 +157,27 @@ export interface NativeArtifactReference {
   registeredAt: string;
 }
 
+export type NativeTerminalFailureCode =
+  | 'PREPARATION_FAILED'
+  | 'TOOL_FAILED'
+  | 'CAPTURE_FAILED'
+  | 'UPLOAD_FAILED'
+  | 'HOST_BECAME_UNQUALIFIED';
+
+export interface NativeTerminalFailure {
+  code: NativeTerminalFailureCode;
+  message: string;
+  retryable: boolean;
+}
+
+export type NativeTerminalDisposition = 'ACCEPTED' | 'ALREADY_ACCEPTED';
+
+export interface NativeTerminalAcknowledgement {
+  attemptId: string;
+  runRevision: number;
+  disposition: NativeTerminalDisposition;
+}
+
 interface NativeLeaseRenewalFields {
   leaseId: string;
   attemptId: string;

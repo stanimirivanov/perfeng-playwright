@@ -135,6 +135,14 @@ remains responsible for verifying the stored object before returning that refere
 does not report a terminal outcome, assert that all required evidence exists, or make the manifest
 ordering decision owned by the later lifecycle coordinator.
 
+Terminal reporting is an idempotent lease-fenced transport. A completed report names the required
+registered manifest reference; a failed report carries one closed failure classification, a bounded
+human-safe message and a retryability hint. The client validates whether the server accepted the
+first report or acknowledged an identical retry. The control plane remains responsible for
+checking complete registered evidence, enforcing manifest-last ordering, advancing the Run and
+rejecting a conflicting terminal claim. Cancellation continues to use lease release rather than a
+terminal report.
+
 The CLI does not call these lease transports yet. Acquiring work before process-tree cancellation,
 execution preparation, and lifecycle coordination are composed could still abandon authority or
 misrepresent execution, and would contradict the worker's `UNAVAILABLE` presence.

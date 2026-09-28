@@ -3,7 +3,7 @@
   "sourceRevision": "af98d52cc09e0650bc73daf33439a12d5ad62ef7",
   "bundleVersion": "0.16.0",
   "nativeWorkerApiVersion": "1.0.0",
-  "transformation": "Presence, acquisition, renewal, release, upload-grant and artifact-registration examples copied byte-for-byte from the reviewed contract revision; the OpenAPI checksum records the complete reviewed API.",
+  "transformation": "Presence, acquisition, renewal, release, upload-grant, artifact-registration and terminal-reporting examples copied byte-for-byte from the reviewed contract revision; the OpenAPI checksum records the complete reviewed API.",
   "files": {
     "native-worker/v1/examples/acquire.json": "d7d9b2b6e5e290a688810c083185b69b2b1c06cc95e4223619b343e9ad608371",
     "native-worker/v1/examples/artifact.json": "e2018a96a6d6ded52ddbecbedf52ac02bc3be68009edb370f493a231bbbad394",
@@ -14,6 +14,10 @@
     "native-worker/v1/examples/register-artifact.json": "ed83347f66f68b73ac2898a5c47a0659d452eb2d9bb3f0476965166e7d044ccc",
     "native-worker/v1/examples/renew.json": "5bd8ea934ecda99529d1cf53917299518374c8ffea4c1bb239123f60f9bd1899",
     "native-worker/v1/examples/renewal.json": "f88577548b4de149ffc4b9a57c46988d42e05b0aa2e8910b3c605747c72c711b",
+    "native-worker/v1/examples/terminal-ack-duplicate.json": "c95eaca9f3a09988eeb3ca840a8e709374c87f1292fccdba6978d5a60adfb6cc",
+    "native-worker/v1/examples/terminal-ack.json": "a8370ee4c77b75250236cae2b11aac6eecb85a1ff8756f735823c84301c921ed",
+    "native-worker/v1/examples/terminal-completed.json": "6baa44ff01d2f522e862cc45e232aa0acc5f06d558e8fec1de4e60961af070ed",
+    "native-worker/v1/examples/terminal-failed.json": "33103e3b2274edc180fe3675f4673440f9d7bc14979c5f2670000f5e98efb3cd",
     "native-worker/v1/examples/upload-grant.json": "dc2621e77497278af364b9ca857759f00d8e5f887556f0280a11502ea43df00b",
     "native-worker/v1/examples/upload-request.json": "1b65ecd3bc2c7cdb5776cab9aeff45f755cee79834117416197a7eb4b28f3de1"
   },
