@@ -126,7 +126,14 @@ its size and SHA-256 before network access, and sends it through one bounded pre
 rechecks the backing file while streaming, and the object store verifies the signed full-object
 checksum. Only HTTP 200 is accepted. Provider response bodies and transport errors are discarded
 without exposing the presigned URL. The transfer does not persist grant delivery material or make
-the uploaded object authoritative; artifact registration remains a separate lease-fenced step.
+the uploaded object authoritative.
+
+Artifact registration repeats the attempt, revision, grant and slot fence after transfer. It
+accepts only a server-issued immutable reference whose Run, attempt, slot, kind, object key, size,
+checksum and media type match the active lease, upload grant and artifact plan. The control plane
+remains responsible for verifying the stored object before returning that reference. Registration
+does not report a terminal outcome, assert that all required evidence exists, or make the manifest
+ordering decision owned by the later lifecycle coordinator.
 
 The CLI does not call these lease transports yet. Acquiring work before process-tree cancellation,
 execution preparation, and lifecycle coordination are composed could still abandon authority or
