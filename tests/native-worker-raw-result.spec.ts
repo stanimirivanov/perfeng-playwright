@@ -1,9 +1,5 @@
-import { readFile } from 'node:fs/promises';
-
 import { expect, test } from '@playwright/test';
 
-import { AcquiredNativeLease } from '../src/native-worker/acquisition.js';
-import { parseNativeLease } from '../src/native-worker/lease.js';
 import {
   createNativeRawResultManifest,
   serializeNativeRawResultManifest,
@@ -13,90 +9,7 @@ import type {
   NativeArtifactPlanItem,
   NativeArtifactReference,
 } from '../src/native-worker/types.js';
-import type { PlaywrightMeasurements } from '../src/journey/types.js';
-
-const capability = 'example-not-a-real-lease-capability-0001';
-
-async function request(): Promise<NativeRawResultRequest> {
-  const authority = new AcquiredNativeLease(
-    parseNativeLease(
-      await readFile(
-        'vendor/contracts/native-worker/v1/examples/lease.json',
-        'utf8',
-      ),
-    ),
-    capability,
-  );
-  authority.lease.assignment.profile = 'smoke';
-  const measurements: PlaywrightMeasurements = {
-    schemaVersion: 2,
-    kind: 'PlaywrightMeasurements',
-    runId: authority.lease.runId,
-    testId: authority.lease.assignment.catalogueTestId,
-    workload: {
-      id: authority.lease.assignment.workloadId,
-      version: '1.0.0',
-      profile: 'smoke',
-      sha256: 'a'.repeat(64),
-    },
-    scenario: {
-      cacheProfile: 'warm',
-      contextReuse: 'per-run',
-      pageReuse: 'per-iteration',
-      warmupIterations: 1,
-      measurementIterations: 3,
-    },
-    diagnosticMode: 'trace',
-    environment: {
-      profile: {
-        id: 'windows-mainstream',
-        version: '1.0.0',
-      },
-      fingerprint: 'b'.repeat(64),
-    },
-    runtime: {
-      playwrightVersion: '1.62.1',
-      nodeVersion: '24.13.0',
-      platform: 'win32',
-      architecture: 'x64',
-    },
-    browser: {
-      name: 'chromium',
-      version: '140.0.7339.16',
-      headless: false,
-      viewport: { width: 1920, height: 1080 },
-      deviceScaleFactor: 1,
-    },
-    measurementWindow: {
-      start: '2026-09-18T12:00:20Z',
-      end: '2026-09-18T12:01:00Z',
-    },
-    createdAt: '2026-09-18T12:01:01Z',
-    measurements: [
-      { iteration: 1, name: 'ui.search.action_to_visible_ms', durationMs: 24 },
-    ],
-  };
-  const registeredArtifacts: NativeArtifactReference[] = [
-    {
-      artifactId: '33333333-3333-4333-8333-333333333333',
-      runId: authority.lease.runId,
-      attemptId: authority.lease.attemptId,
-      slot: 'measurements',
-      kind: 'measurements',
-      uri: `s3://perfeng/runs/${authority.lease.runId}/attempts/${authority.lease.attemptId}/measurements`,
-      size: 2048,
-      sha256: 'c'.repeat(64),
-      mediaType: 'application/json',
-      registeredAt: '2026-09-18T12:01:15Z',
-    },
-  ];
-  return {
-    authority,
-    measurements,
-    registeredArtifacts,
-    createdAt: '2026-09-18T12:01:20Z',
-  };
-}
+import { nativeRawResultRequest } from './native-worker-raw-result-fixture.js';
 
 function measurementReference(
   input: NativeRawResultRequest,
@@ -119,7 +32,7 @@ function manifestPlan(input: NativeRawResultRequest): NativeArtifactPlanItem {
 }
 
 test('constructs a deterministic raw-result/v2 manifest from registered evidence', async () => {
-  const input = await request();
+  const input = await nativeRawResultRequest();
 
   expect(createNativeRawResultManifest(input)).toEqual({
     schemaVersion: 2,
@@ -166,7 +79,7 @@ test('constructs a deterministic raw-result/v2 manifest from registered evidence
 });
 
 test('maps source-checkout provenance without changing its identity', async () => {
-  const input = await request();
+  const input = await nativeRawResultRequest();
   input.authority.lease.assignment.executionArtifact = {
     kind: 'source-checkout',
     repository: 'https://github.com/stanimirivanov/perfeng-playwright',
@@ -187,7 +100,7 @@ test('maps source-checkout provenance without changing its identity', async () =
 });
 
 test('requires every required non-manifest artifact', async () => {
-  const input = await request();
+  const input = await nativeRawResultRequest();
   input.registeredArtifacts = [];
 
   expect(() => createNativeRawResultManifest(input)).toThrow(
@@ -196,7 +109,7 @@ test('requires every required non-manifest artifact', async () => {
 });
 
 test('rejects self-reference, duplicate evidence, and a changed attempt fence', async () => {
-  const input = await request();
+  const input = await nativeRawResultRequest();
   const measurements = measurementReference(input);
   const manifest: NativeArtifactReference = {
     ...measurements,
@@ -231,7 +144,7 @@ test('rejects self-reference, duplicate evidence, and a changed attempt fence', 
 });
 
 test('rejects measurement identity and timeline outside the active lease', async () => {
-  const input = await request();
+  const input = await nativeRawResultRequest();
   expect(() =>
     createNativeRawResultManifest({
       ...input,
@@ -247,7 +160,7 @@ test('rejects measurement identity and timeline outside the active lease', async
 });
 
 test('rejects manifest bytes above the assigned limit', async () => {
-  const input = await request();
+  const input = await nativeRawResultRequest();
   manifestPlan(input).maximumBytes = 1;
 
   expect(() => serializeNativeRawResultManifest(input)).toThrow(

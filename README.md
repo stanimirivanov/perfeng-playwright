@@ -75,10 +75,11 @@ Configuration and exact operating instructions are in the
 perfeng-contracts bundle 0.17.0 at revision
 `be847a4c7c0ad22c799389410a8c234d5492abc3`, matching the control plane. It
 requires HTTPS, refuses redirects, bounds response bytes, and never reads a
-credential from JSON or a command-line argument. Its raw-result builder emits
+credential from JSON or a command-line argument. Its raw-result path constructs
 deterministic `raw-result/v2` bytes from matching measurements, immutable
-execution provenance, and lease-fenced registered evidence; it does not publish
-the manifest or advance the Run.
+execution provenance, and lease-fenced registered evidence, persists them
+exclusively, and publishes the manifest through the existing grant, transfer,
+and registration boundary. It does not advance the Run.
 
 ## Semantic measurements
 
