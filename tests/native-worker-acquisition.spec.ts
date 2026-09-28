@@ -10,6 +10,7 @@ import {
   type LeaseAcquisition,
   LeaseAcquisitionFailure,
 } from '../src/native-worker/acquisition.js';
+import { parseNativeLease } from '../src/native-worker/lease.js';
 
 const controlPlaneOrigin = 'https://control-plane.perfeng.invalid';
 const token = 'worker-secret';
@@ -72,6 +73,10 @@ test('acquires and validates one lease without serializing its capability', asyn
     runId: 'perf-20260918-120000-a1b2c3d4',
     runRevision: 4,
     renewAfterSeconds: 40,
+    artifactPlan: [
+      { slot: 'measurements', format: 'playwright-measurements/v2' },
+      { slot: 'manifest', format: 'raw-result/v2' },
+    ],
   });
   expect(authority.useCapability((value) => value)).toBe(capability);
   expect(JSON.stringify(authority)).not.toContain(capability);
@@ -173,6 +178,28 @@ test('accepts server timestamps with nanosecond precision', async () => {
   );
 
   expect(authority.lease.issuedAt).toBe('2026-09-18T12:00:00.123456789Z');
+});
+
+test('rejects obsolete and unsafe artifact formats before execution', async () => {
+  const lease = JSON.parse(
+    await readFile(
+      'vendor/contracts/native-worker/v1/examples/lease.json',
+      'utf8',
+    ),
+  ) as {
+    artifactPlan: [Record<string, unknown>, ...Record<string, unknown>[]];
+  };
+
+  for (const format of ['playwright-measurements-v2', '../measurements/v2']) {
+    const [firstArtifact, ...remainingArtifacts] = lease.artifactPlan;
+    const artifactPlan = [
+      { ...firstArtifact, format },
+      ...remainingArtifacts.map((item) => ({ ...item })),
+    ];
+    expect(() =>
+      parseNativeLease(JSON.stringify({ ...lease, artifactPlan })),
+    ).toThrow('artifactPlan[0].format');
+  }
 });
 
 test('accepts the source-checkout assignment advertised by this worker', async () => {

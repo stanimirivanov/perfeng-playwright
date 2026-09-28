@@ -72,8 +72,8 @@ execution loop can accept work.
 
 Configuration and exact operating instructions are in the
 [native worker presence guide](docs/native-worker-presence.md). The client pins
-perfeng-contracts bundle 0.16.0 at revision
-`af98d52cc09e0650bc73daf33439a12d5ad62ef7`, matching the control plane. It
+perfeng-contracts bundle 0.17.0 at revision
+`be847a4c7c0ad22c799389410a8c234d5492abc3`, matching the control plane. It
 requires HTTPS, refuses redirects, bounds response bytes, and never reads a
 credential from JSON or a command-line argument.
 

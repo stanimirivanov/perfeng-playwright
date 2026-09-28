@@ -99,7 +99,7 @@ Do not reinterpret a running heartbeat as a ready worker; `authorizedToAcquire` 
 policy and the process deliberately does not act on it.
 
 The vendored presence examples and lock under `vendor/contracts` pin byte-identical fixtures from
-perfeng-contracts bundle 0.16.0 and record the reviewed full OpenAPI checksum. Updating the API
+perfeng-contracts bundle 0.17.0 and record the reviewed full OpenAPI checksum. Updating the API
 requires an explicit contract repin and compatibility review rather than accepting a moving schema.
 
 The package also contains contract-validated lease acquisition, renewal, release and upload-grant
@@ -107,6 +107,10 @@ transports needed by the next worker lifecycle slice. Acquisition distinguishes 
 from a `204` idle response, validates the complete assignment and artifact plan, and keeps the
 `X-Perfeng-Lease` capability out of JSON and diagnostic inspection. Each long-poll request is
 bounded to the requested server wait plus five seconds.
+
+The current plan requires `playwright-measurements/v2` for the `measurements` slot and
+`raw-result/v2` for the `manifest` slot. Acquisition rejects the obsolete hyphenated placeholders
+and unknown formats before any assigned execution starts.
 
 Renewal sends the current attempt fence and execution phase, is bounded to five seconds, validates
 the authoritative revision and expiry schedule, and represents cancellation as a distinct state

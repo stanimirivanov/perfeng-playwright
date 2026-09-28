@@ -1,6 +1,7 @@
 import { integer, requiredString } from '../configuration/primitives.js';
 
 const identifierPattern = /^[a-z][a-z0-9-]{1,62}$/;
+const artifactFormatPattern = /^[a-z0-9][a-z0-9._/-]*$/;
 const uuidPattern =
   /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const timestampPattern =
@@ -9,6 +10,10 @@ const sha256Pattern = /^[a-f0-9]{64}$/;
 
 export function contractIdentifier(value: unknown, name: string): string {
   return patternString(value, name, identifierPattern);
+}
+
+export function contractArtifactFormat(value: unknown, name: string): string {
+  return patternString(value, name, artifactFormatPattern);
 }
 
 export function contractSha256(value: unknown, name: string): string {
