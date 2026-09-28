@@ -153,6 +153,14 @@ references by the server artifact plan, and rejects duplicate, foreign, late or 
 evidence. The manifest remains unpublished until the lifecycle coordinator writes and publishes it
 through the same grant, transfer and registration boundary.
 
+The manifest-publication operation performs that ordering explicitly: it serializes and validates
+the complete result, creates the local manifest without replacing an existing path, computes the
+exact byte integrity, then requests the `manifest` grant, transfers those bytes and registers the
+returned reference. Invalid input and output collisions cause no network request. Remote failure
+retains the immutable local file for an explicit retry. A retry may reuse only a regular file whose
+bytes exactly match the reconstructed manifest; it never replaces evidence or reports the Run as
+completed.
+
 Terminal reporting is an idempotent lease-fenced transport. A completed report names the required
 registered manifest reference; a failed report carries one closed failure classification, a bounded
 human-safe message and a retryability hint. The client validates whether the server accepted the
