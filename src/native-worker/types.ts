@@ -122,6 +122,28 @@ export type NativeLeaseReleaseReason =
 export type NativeLeaseMutationFailureKind =
   'cancelled' | 'conflict' | 'lost' | 'permanent' | 'retryable';
 
+export interface NativeUploadGrantDetails {
+  grantId: string;
+  leaseId: string;
+  attemptId: string;
+  runId: string;
+  slot: string;
+  objectKey: string;
+  method: 'PUT';
+  expiresAt: string;
+  maximumBytes: number;
+  sha256: string;
+}
+
+export interface NativeUploadAuthorization {
+  url: string;
+  method: 'PUT';
+  headers: {
+    'content-type': string;
+    'x-amz-checksum-sha256': string;
+  };
+}
+
 interface NativeLeaseRenewalFields {
   leaseId: string;
   attemptId: string;

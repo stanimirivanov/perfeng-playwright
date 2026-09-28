@@ -3,7 +3,7 @@
   "sourceRevision": "af98d52cc09e0650bc73daf33439a12d5ad62ef7",
   "bundleVersion": "0.16.0",
   "nativeWorkerApiVersion": "1.0.0",
-  "transformation": "Presence, acquisition, renewal and release examples copied byte-for-byte from the reviewed contract revision; the OpenAPI checksum records the complete reviewed API.",
+  "transformation": "Presence, acquisition, renewal, release and upload-grant examples copied byte-for-byte from the reviewed contract revision; the OpenAPI checksum records the complete reviewed API.",
   "files": {
     "native-worker/v1/examples/acquire.json": "d7d9b2b6e5e290a688810c083185b69b2b1c06cc95e4223619b343e9ad608371",
     "native-worker/v1/examples/lease.json": "05b0657b7cc725e57fb5a0115dd0c54dbfeff162017f97b40ef38d8ba3bd7e15",
@@ -11,7 +11,9 @@
     "native-worker/v1/examples/presence-status.json": "24bead9a7db89549dff75360ea721b9579007702b10a0f70407265fa9a9ba9fd",
     "native-worker/v1/examples/release.json": "061cd2b1ca205dfe5f1c4bdb16b57d51d28575424e9776ba1e7533e764dbbe2b",
     "native-worker/v1/examples/renew.json": "5bd8ea934ecda99529d1cf53917299518374c8ffea4c1bb239123f60f9bd1899",
-    "native-worker/v1/examples/renewal.json": "f88577548b4de149ffc4b9a57c46988d42e05b0aa2e8910b3c605747c72c711b"
+    "native-worker/v1/examples/renewal.json": "f88577548b4de149ffc4b9a57c46988d42e05b0aa2e8910b3c605747c72c711b",
+    "native-worker/v1/examples/upload-grant.json": "dc2621e77497278af364b9ca857759f00d8e5f887556f0280a11502ea43df00b",
+    "native-worker/v1/examples/upload-request.json": "1b65ecd3bc2c7cdb5776cab9aeff45f755cee79834117416197a7eb4b28f3de1"
   },
   "reviewedOpenApiSha256": "c6c5954823a101de47eda19137c609e06565545e77b74bcd9989d518eefe94f1"
 }

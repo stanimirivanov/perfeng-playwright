@@ -102,9 +102,9 @@ The vendored presence examples and lock under `vendor/contracts` pin byte-identi
 perfeng-contracts bundle 0.16.0 and record the reviewed full OpenAPI checksum. Updating the API
 requires an explicit contract repin and compatibility review rather than accepting a moving schema.
 
-The package also contains contract-validated lease acquisition, renewal and release transports
-needed by the next worker lifecycle slice. Acquisition distinguishes an acquired lease from a
-`204` idle response, validates the complete assignment and artifact plan, and keeps the
+The package also contains contract-validated lease acquisition, renewal, release and upload-grant
+transports needed by the next worker lifecycle slice. Acquisition distinguishes an acquired lease
+from a `204` idle response, validates the complete assignment and artifact plan, and keeps the
 `X-Perfeng-Lease` capability out of JSON and diagnostic inspection. Each long-poll request is
 bounded to the requested server wait plus five seconds.
 
@@ -115,6 +115,12 @@ retryable transport failures. Release sends the same attempt fence and one close
 idempotent for the same accepted reason, and optionally carries a bounded operator-safe message.
 Cancellation release confirms that the complete process tree has already stopped; the transport
 does not make that claim itself.
+
+Upload-grant acquisition verifies the declared bytes against the assigned slot and validates the
+server-selected object key, attempt fence, size ceiling, checksum, lease-bounded expiry and exact
+signed headers. Its presigned URL query and header values are bearer material. They remain behind
+an explicit callback and are omitted from JSON, string and diagnostic inspection. This transport
+does not upload bytes, persist grant delivery material or register an artifact.
 
 The CLI does not call these lease transports yet. Acquiring work before process-tree cancellation,
 execution preparation, and lifecycle coordination are composed could still abandon authority or
