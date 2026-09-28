@@ -28,8 +28,8 @@ Implementation is organized by responsibility:
 - `src/trace`: bounded Chromium CDP performance-trace capture and stream handling;
 - `src/memory`: garbage-collected memory census and heap-snapshot capture;
 - `src/native-worker`: strict Native Worker API transport, presence configuration, lease
-  acquisition, renewal, release, upload-grant validation, exact presigned artifact transfer, and
-  qualification-evidence projection;
+  acquisition, renewal, release, upload-grant validation, exact presigned artifact transfer,
+  lease-fenced artifact registration, and qualification-evidence projection;
 - `src/smoothness`: rendering-focused Chromium trace capture.
 
 The short files at the `src` root are package entry points, command and

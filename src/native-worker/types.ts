@@ -144,6 +144,19 @@ export interface NativeUploadAuthorization {
   };
 }
 
+export interface NativeArtifactReference {
+  artifactId: string;
+  runId: string;
+  attemptId: string;
+  slot: string;
+  kind: string;
+  uri: string;
+  size: number;
+  sha256: string;
+  mediaType: string;
+  registeredAt: string;
+}
+
 interface NativeLeaseRenewalFields {
   leaseId: string;
   attemptId: string;
