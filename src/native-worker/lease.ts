@@ -7,6 +7,7 @@ import {
 import {
   absoluteHttpsUrl,
   boundedInteger,
+  contractArtifactFormat,
   contractIdentifier,
   contractSha256,
   contractTimestamp,
@@ -26,6 +27,10 @@ import type {
 const runIdPattern = /^perf-[0-9]{8}-[0-9]{6}-[a-f0-9]{8}$/;
 const lockfilePattern = /^[A-Za-z0-9._/-]+$/;
 const mediaTypePattern = /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/;
+const canonicalArtifactFormats = new Map([
+  ['measurements', 'playwright-measurements/v2'],
+  ['manifest', 'raw-result/v2'],
+]);
 const browsers = new Set<BrowserFamily>(['chromium', 'chrome', 'edge']);
 const diagnosticModes = new Set<WorkerDiagnosticMode>([
   'lightweight',
@@ -199,6 +204,11 @@ function artifactPlan(value: unknown): NativeArtifactPlanItem[] {
     }
     slots.add(slot);
 
+    const format = contractArtifactFormat(source.format, `${name}.format`);
+    if (canonicalArtifactFormats.get(slot) !== format) {
+      throw new Error(`${name}.format is not supported for slot ${slot}`);
+    }
+
     return {
       slot,
       kind: contractIdentifier(source.kind, `${name}.kind`),
@@ -207,7 +217,7 @@ function artifactPlan(value: unknown): NativeArtifactPlanItem[] {
         `${name}.mediaType`,
         mediaTypePattern,
       ),
-      format: contractIdentifier(source.format, `${name}.format`),
+      format,
       maximumBytes: boundedInteger(
         source.maximumBytes,
         `${name}.maximumBytes`,
