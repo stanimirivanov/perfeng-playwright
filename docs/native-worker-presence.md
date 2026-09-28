@@ -146,6 +146,13 @@ retry implicitly. If transfer succeeds but registration fails, the object remain
 and attempt-scoped; a lifecycle coordinator may retry the same declaration while its lease remains
 current. The worker receives no permission to inspect or delete that object.
 
+The raw-result builder constructs deterministic `raw-result/v2` bytes only after every required
+non-manifest artifact has a lease-fenced registered reference. It derives Run, test, workload,
+measurement-window and producer provenance from the validated measurements and assignment, orders
+references by the server artifact plan, and rejects duplicate, foreign, late or self-referential
+evidence. The manifest remains unpublished until the lifecycle coordinator writes and publishes it
+through the same grant, transfer and registration boundary.
+
 Terminal reporting is an idempotent lease-fenced transport. A completed report names the required
 registered manifest reference; a failed report carries one closed failure classification, a bounded
 human-safe message and a retryability hint. The client validates whether the server accepted the
