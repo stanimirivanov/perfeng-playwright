@@ -30,7 +30,8 @@ execution, bounded observation/diagnostics, artifact persistence and public pack
 - Observation, trace, memory and smoothness modules collect bounded raw evidence. They do not infer
   performance diagnoses.
 - Artifact modules serialize exact payloads, reserve destinations and return integrity fields. They
-  do not upload or register artifacts.
+  do not upload or register artifacts. The separate native-worker adapter may transfer and register
+  those exact bytes only through lease-scoped server-issued grants.
 - Root modules are public/compatibility façades and CLI/configuration adapters. Implementation
   modules depend on responsibility-focused modules, not back through façades.
 - Scheduling, environment provisioning, storage, normalization, baselines and verdicts remain in

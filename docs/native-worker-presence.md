@@ -119,8 +119,14 @@ does not make that claim itself.
 Upload-grant acquisition verifies the declared bytes against the assigned slot and validates the
 server-selected object key, attempt fence, size ceiling, checksum, lease-bounded expiry and exact
 signed headers. Its presigned URL query and header values are bearer material. They remain behind
-an explicit callback and are omitted from JSON, string and diagnostic inspection. This transport
-does not upload bytes, persist grant delivery material or register an artifact.
+an explicit callback and are omitted from JSON, string and diagnostic inspection.
+
+The separate artifact-transfer step opens the declared local file as a file-backed Blob, verifies
+its size and SHA-256 before network access, and sends it through one bounded presigned `PUT`. Node
+rechecks the backing file while streaming, and the object store verifies the signed full-object
+checksum. Only HTTP 200 is accepted. Provider response bodies and transport errors are discarded
+without exposing the presigned URL. The transfer does not persist grant delivery material or make
+the uploaded object authoritative; artifact registration remains a separate lease-fenced step.
 
 The CLI does not call these lease transports yet. Acquiring work before process-tree cancellation,
 execution preparation, and lifecycle coordination are composed could still abandon authority or

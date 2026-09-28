@@ -31,8 +31,10 @@ defect or propose a superseding ADR. Ordinary ambiguity follows CONTRIBUTING.
 
 `perfeng-playwright` owns browser journeys, semantic interaction measurement,
 browser execution, bounded Chromium diagnostics, raw browser payloads, integrity
-receipts, and the distributable native runner. It does not own scheduling, host
-provisioning, artifact upload/storage, normalization, baseline selection or
+receipts, and the distributable native runner. Its native worker adapter may
+transfer and register exact runner artifacts through server-issued, lease-scoped
+grants. It does not own scheduling, host provisioning, object-store
+administration or durable storage policy, normalization, baseline selection or
 performance verdicts.
 
 - The browser Performance clock owns measured interaction durations;
