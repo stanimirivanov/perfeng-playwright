@@ -10,6 +10,7 @@ const projectRoot = dirname(
   fileURLToPath(new URL('../package.json', import.meta.url)),
 );
 
+/** Immutable source and dependency-lock identity used as native-runner provenance. */
 export interface SourceCheckoutArtifact {
   kind: 'source-checkout';
   repository: string;
@@ -20,6 +21,7 @@ export interface SourceCheckoutArtifact {
   };
 }
 
+/** Executes a Git command and returns its standard output for checkout inspection. */
 export type GitCommand = (arguments_: string[]) => Promise<string>;
 
 async function executeGit(root: string, arguments_: string[]): Promise<string> {

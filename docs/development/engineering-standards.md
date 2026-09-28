@@ -23,6 +23,8 @@ is optional.
 
 Organize around configuration, semantic interaction timing, journey orchestration, browser
 execution, bounded observation/diagnostics, artifact persistence and public package entry points.
+The module model and dependency direction are defined in the
+[browser-runner architecture](architecture.md).
 
 - Interaction modules define semantic start/completion and return raw named durations.
 - Journey orchestration owns repetitions and lifecycle but does not redefine interaction timing.
@@ -162,6 +164,16 @@ speculative collector abstractions.
 - Document semantic start/completion, lifecycle, environment requirements, diagnostic overhead and
   sensitivity, output contracts, limitations and caller responsibilities.
 - Comments explain timing, lifecycle, serialization, security and resource constraints, not syntax.
+- TSDoc is required for functions, classes, interfaces and type aliases exposed through
+  `src/index.ts`, `src/cli.ts` or `src/worker-cli.ts`. Put the comment on the owning declaration so
+  emitted declarations retain it; a re-export comment is not a substitute.
+- Public TSDoc states the contract, ownership, side effects, failure or cancellation behavior when
+  those facts matter. It MUST NOT restate names or add placeholder parameter and return prose.
+- An export used only for composition or tests inside a feature folder is not automatically a
+  supported API. Document internal declarations only when their non-obvious constraints need to
+  survive refactoring.
+- `pnpm docs:check` uses the pinned TypeDoc version and MUST remain fail-closed for missing or invalid
+  documentation on the configured boundary. Generated documentation is not committed.
 - Long documents follow the TL;DR policy in CONTRIBUTING.
 - Dependency and browser updates require a current need, compatible license, maintained release,
   exact lock, security review, release-note review and isolated validation. Do not combine them with

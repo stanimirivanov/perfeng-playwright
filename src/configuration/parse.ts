@@ -10,6 +10,7 @@ import {
 } from './sections.js';
 import type { RunnerConfiguration } from './types.js';
 
+/** Parses and validates a complete versioned runner configuration document. */
 export function parseRunnerConfiguration(text: string): RunnerConfiguration {
   let decoded: unknown;
   try {

@@ -1,3 +1,4 @@
+/** One semantic browser measurement expressed in milliseconds. */
 export interface InteractionMeasurement {
   name: string;
   durationMs: number;
@@ -5,6 +6,7 @@ export interface InteractionMeasurement {
 
 interface InteractionBase {
   metricName: string;
+  /** Performs the application interaction whose semantic completion is measured. */
   action: () => Promise<void>;
   timeoutMs?: number;
 }
@@ -24,4 +26,5 @@ export interface BlackBoxInteraction extends InteractionBase {
   renderFrames?: number;
 }
 
+/** Selects application-assisted or DOM-observed semantic interaction timing. */
 export type InteractionOptions = InstrumentedInteraction | BlackBoxInteraction;

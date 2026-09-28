@@ -5,6 +5,7 @@ import type { RunnerConfiguration } from './types.js';
 
 const maximumConfigurationBytes = 64 * 1024;
 
+/** Reads a bounded UTF-8 runner configuration and validates its complete contract. */
 export async function readRunnerConfiguration(
   path: string,
 ): Promise<RunnerConfiguration> {

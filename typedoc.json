@@ -1,0 +1,21 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/index.ts", "src/cli.ts", "src/worker-cli.ts"],
+  "entryPointStrategy": "resolve",
+  "emit": "none",
+  "intentionallyNotExported": [
+    "Command",
+    "DurationSummary",
+    "JavaScriptHeapObservation",
+    "NavigationObservation",
+    "ResourceSummary",
+    "WorkerPresenceStatus"
+  ],
+  "requiredToBeDocumented": ["Class", "Function", "Interface", "TypeAlias"],
+  "treatWarningsAsErrors": true,
+  "validation": {
+    "invalidLink": true,
+    "notDocumented": true,
+    "notExported": true
+  }
+}
