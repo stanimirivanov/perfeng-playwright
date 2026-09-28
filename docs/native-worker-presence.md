@@ -135,6 +135,13 @@ remains responsible for verifying the stored object before returning that refere
 does not report a terminal outcome, assert that all required evidence exists, or make the manifest
 ordering decision owned by the later lifecycle coordinator.
 
+The artifact-publication operation composes the three authority boundaries in their required
+order: acquire a grant, transfer the exact local file, then register the verified reference. It
+returns only the immutable reference and never exposes or retains upload authorization. It does not
+retry implicitly. If transfer succeeds but registration fails, the object remains non-authoritative
+and attempt-scoped; a lifecycle coordinator may retry the same declaration while its lease remains
+current. The worker receives no permission to inspect or delete that object.
+
 Terminal reporting is an idempotent lease-fenced transport. A completed report names the required
 registered manifest reference; a failed report carries one closed failure classification, a bounded
 human-safe message and a retryability hint. The client validates whether the server accepted the
