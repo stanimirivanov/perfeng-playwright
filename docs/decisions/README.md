@@ -81,4 +81,5 @@ How will assumptions and consequences be verified?
 
 ## Index
 
-No ADRs have been accepted yet.
+- [ADR-0001: Publish artifacts with receipt-last commitment](0001-publish-artifacts-with-receipt-last-commitment.md)
+  — Accepted
