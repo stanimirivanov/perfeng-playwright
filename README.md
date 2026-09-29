@@ -162,12 +162,22 @@ window, and `dataLossOccurred` value so the surrounding platform can construct
 the later `browser-diagnostics/v1` manifest without guessing.
 
 `writeMeasurementArtifact` writes one payload as deterministic UTF-8 JSON.
-`writeJourneyArtifacts` reserves all requested destinations before writing the
-measurement, diagnostic payloads, and integrity receipt, and removes only
-outputs it created if the operation fails. Both return SHA-256 and byte-count
-integrity fields for `raw-result/v1` references. Existing paths are never
-overwritten. Upload and manifest registration remain storage and control-plane
-responsibilities.
+`writeJourneyArtifacts` validates every destination, fully stages missing
+files beside their destinations, and atomically publishes complete payloads
+before publishing the integrity receipt. Receipt presence commits the exact
+artifact set; payloads without a receipt are uncommitted recovery state. A
+retry may reuse only byte-identical payloads or a byte-identical committed set.
+Both functions return SHA-256 and byte-count integrity fields for
+`raw-result/v2` references. Existing paths are never overwritten. Filesystems
+that cannot create same-directory hard links fail closed instead of falling
+back to an operation that can expose partial bytes. Upload and manifest
+registration remain storage and control-plane responsibilities.
+
+A terminated process can leave a hidden `.perfeng-publication-*` staging
+directory beside an output. Publication ignores unknown staging directories so
+it cannot delete another active publisher's files. Operators may remove one
+only after establishing that no publication is active in that output directory;
+final artifact and receipt paths must be assessed separately.
 
 ## CDP memory evidence
 
@@ -272,21 +282,25 @@ separate gzip destinations:
 pnpm run run -- run --config examples/search-memory-run.json --output results/playwright-measurements.json --receipt-output results/playwright-receipt.json --heap-snapshot-before-output results/before.heapsnapshot.gz --heap-snapshot-after-output results/after.heapsnapshot.gz
 ```
 
-The `playwright-runner-receipt/v2` output is required and written atomically
-with the captured artifacts. It binds the Run and test identities, capture
-metadata, integrity fields, and native producer provenance required by later
-manifest assembly. The provenance identifies the source repository, Git SHA,
-and exact `pnpm-lock.yaml` checksum. The CLI verifies a clean checkout before
-and after browser execution, refuses publication if it changes, and never
-overwrites an existing receipt.
+The `playwright-runner-receipt/v2` output is required and published last as the
+commit marker for the captured artifacts. Every individual final path appears
+atomically with complete bytes; the multi-file set is committed only when the
+receipt exists. It binds the Run and test identities, capture metadata,
+integrity fields, and native producer provenance required by later manifest
+assembly. The provenance identifies the source repository, Git SHA, and exact
+`pnpm-lock.yaml` checksum. The CLI verifies a clean checkout before and after
+browser execution, refuses publication if it changes, and never overwrites an
+existing receipt.
 
 The v2 configuration is a closed, versioned JSON object. The target must be an
 absolute HTTP or HTTPS URL without embedded credentials, query parameters, or
 fragments. Put authentication in a future credential adapter, never in this
-file. Output paths must be distinct and must not already exist. On success the
-CLI prints a JSON integrity receipt for the measurements and requested
-diagnostic evidence. Logs, the `browser-diagnostics/v1` manifest, upload, and
-artifact registration remain the caller's responsibility.
+file. Output paths must be distinct. A fresh run requires unused paths;
+publication may reuse only exact files from an interrupted attempt and rejects
+all mismatches. On success the CLI prints a JSON integrity receipt for the
+measurements and requested diagnostic evidence. Logs, the
+`browser-diagnostics/v1` manifest, upload, and artifact registration remain the
+caller's responsibility.
 
 The included search page is a deterministic test fixture for the timing
 library and journey executor, not a production benchmark or claimed latency

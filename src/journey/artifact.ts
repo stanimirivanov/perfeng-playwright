@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto';
-import { mkdir, open, unlink, type FileHandle } from 'node:fs/promises';
-import { dirname } from 'node:path';
+
+import {
+  publishCommittedFileSet,
+  publishImmutableFile,
+  type ImmutablePublicationFile,
+} from '../filesystem/immutable-publication.js';
 
 import type {
   JourneyCapture,
@@ -29,10 +33,6 @@ interface PendingArtifact {
   integrity: WrittenMeasurementArtifact;
 }
 
-interface OpenArtifact extends PendingArtifact {
-  handle: FileHandle;
-}
-
 function pendingBytes(path: string, bytes: Buffer): PendingArtifact {
   return {
     path,
@@ -49,45 +49,39 @@ function pendingJson(path: string, payload: unknown): PendingArtifact {
   return pendingBytes(path, Buffer.from(content, 'utf8'));
 }
 
-async function writeArtifacts(artifacts: PendingArtifact[]): Promise<void> {
-  if (new Set(artifacts.map(({ path }) => path)).size !== artifacts.length) {
-    throw new Error('Artifact output paths must be distinct');
-  }
-  await Promise.all(
-    [...new Set(artifacts.map(({ path }) => dirname(path)))].map((directory) =>
-      mkdir(directory, { recursive: true }),
-    ),
-  );
-  const opened: OpenArtifact[] = [];
-  try {
-    for (const artifact of artifacts) {
-      opened.push({
-        ...artifact,
-        handle: await open(artifact.path, 'wx'),
-      });
-    }
-    await Promise.all(
-      opened.map(({ handle, bytes }) => handle.writeFile(bytes)),
-    );
-    await Promise.all(opened.map(({ handle }) => handle.close()));
-  } catch (error) {
-    await Promise.allSettled(opened.map(({ handle }) => handle.close()));
-    await Promise.allSettled(opened.map(({ path }) => unlink(path)));
-    throw error;
-  }
+function publicationFile(
+  artifact: PendingArtifact,
+  description: string,
+): ImmutablePublicationFile {
+  return { path: artifact.path, bytes: artifact.bytes, description };
 }
 
-/** Writes exact artifact bytes once and returns their transport integrity fields. */
+/**
+ * Publishes deterministic measurement bytes at one previously unused path.
+ *
+ * The final path appears atomically after its bytes are flushed. Any existing
+ * destination or unsupported hard-link filesystem fails without replacement.
+ */
 export async function writeMeasurementArtifact(
   path: string,
   payload: PlaywrightMeasurements,
 ): Promise<WrittenMeasurementArtifact> {
   const artifact = pendingJson(path, payload);
-  await writeArtifacts([artifact]);
+  await publishImmutableFile(
+    publicationFile(artifact, `measurement artifact at ${path}`),
+    'reject',
+  );
   return artifact.integrity;
 }
 
-/** Writes a journey's measurement, diagnostics, and integrity receipt once. */
+/**
+ * Publishes journey payloads before the receipt that commits their exact set.
+ *
+ * Every final path appears atomically. Exact payloads left without a receipt
+ * may be reused by a retry; an existing receipt is accepted only with the full
+ * exact set. Mismatches and unsupported hard-link filesystems fail without
+ * replacing or deleting final paths.
+ */
 export async function writeJourneyArtifacts(
   paths: JourneyArtifactPaths,
   capture: JourneyCapture,
@@ -193,13 +187,42 @@ export async function writeJourneyArtifacts(
     artifacts: written,
   };
   const receipt = pendingJson(paths.receipt, receiptValue);
-  await writeArtifacts([
-    measurements,
-    ...(observations === undefined ? [] : [observations]),
-    ...(trace === undefined ? [] : [trace]),
-    ...(memoryBefore === undefined ? [] : [memoryBefore]),
-    ...(memoryAfter === undefined ? [] : [memoryAfter]),
-    receipt,
-  ]);
+  const payloads = [
+    publicationFile(
+      measurements,
+      `measurement artifact at ${measurements.path}`,
+    ),
+    ...(observations === undefined
+      ? []
+      : [
+          publicationFile(
+            observations,
+            `observation artifact at ${observations.path}`,
+          ),
+        ]),
+    ...(trace === undefined
+      ? []
+      : [publicationFile(trace, `trace artifact at ${trace.path}`)]),
+    ...(memoryBefore === undefined
+      ? []
+      : [
+          publicationFile(
+            memoryBefore,
+            `before-memory artifact at ${memoryBefore.path}`,
+          ),
+        ]),
+    ...(memoryAfter === undefined
+      ? []
+      : [
+          publicationFile(
+            memoryAfter,
+            `after-memory artifact at ${memoryAfter.path}`,
+          ),
+        ]),
+  ];
+  await publishCommittedFileSet(
+    payloads,
+    publicationFile(receipt, `integrity receipt at ${receipt.path}`),
+  );
   return written;
 }

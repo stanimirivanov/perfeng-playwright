@@ -67,10 +67,17 @@ directional and the lifecycle owner remains clear. Circular feature dependencies
 | `src/journeys`                                                 | Repository-owned user journeys                                                   | Generic lifecycle policy                        |
 | `src/observation`, `src/trace`, `src/memory`, `src/smoothness` | Bounded raw diagnostic evidence                                                  | Diagnosis or performance verdicts               |
 | `src/native-worker`                                            | Lease-fenced protocol operations and exact artifact publication                  | Environment provisioning or control-plane state |
+| `src/filesystem`                                               | Atomic, exclusive local publication and receipt-last commitment                  | Payload meaning, upload or durable storage      |
 
 The root compatibility façades exist for current consumers. New implementation code imports the
 owning feature module directly. The package exposes only `src/index.ts`; an `export` inside a feature
 folder provides TypeScript module visibility for composition and tests, not a supported package API.
+
+Journey and Native Worker publication share the filesystem adapter because atomic appearance and
+no-overwrite recovery are storage-boundary concerns, not browser or protocol semantics. It stages
+complete sibling files and exposes them with no-replacement hard links. Multi-file journey payloads
+appear before the receipt; consumers treat receipt presence as commitment and ignore payload-only
+recovery state. Unsupported filesystems fail closed rather than weakening this invariant.
 
 The public journey API intentionally accepts Playwright's `Page`. The runner already defines
 Playwright-specific execution and measurement semantics, so hiding `Page` behind a local duplicate

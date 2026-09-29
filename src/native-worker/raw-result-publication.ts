@@ -1,14 +1,6 @@
 import { createHash } from 'node:crypto';
-import {
-  lstat,
-  mkdir,
-  open,
-  readFile,
-  unlink,
-  type FileHandle,
-} from 'node:fs/promises';
-import { dirname } from 'node:path';
 
+import { publishImmutableFile } from '../filesystem/immutable-publication.js';
 import {
   publishNativeArtifact,
   type NativeArtifactPublicationTransport,
@@ -36,13 +28,27 @@ export interface PublishedNativeRawResultManifest {
   };
 }
 
-/** Persists and publishes a manifest after its required evidence is registered. */
+/**
+ * Atomically persists, uploads, and registers the final raw-result manifest.
+ *
+ * Remote effects start only after complete local bytes are visible. A retry
+ * may reuse an exact regular file left after remote failure; mismatched or
+ * unsafe destinations fail without contacting the control plane. Cancellation
+ * is forwarded to grant, upload, and registration requests.
+ */
 export async function publishNativeRawResultManifest(
   request: NativeRawResultPublicationRequest,
   transport?: NativeArtifactPublicationTransport,
 ): Promise<PublishedNativeRawResultManifest> {
   const bytes = serializeNativeRawResultManifest(request);
-  await writeOrReuseExact(request.path, bytes);
+  await publishImmutableFile(
+    {
+      path: request.path,
+      bytes,
+      description: 'native raw-result manifest',
+    },
+    'reuse-exact',
+  );
   const integrity = {
     size: bytes.length,
     sha256: createHash('sha256').update(bytes).digest('hex'),
@@ -70,46 +76,4 @@ export async function publishNativeRawResultManifest(
     reference,
     localArtifact: { path: request.path, ...integrity },
   };
-}
-
-async function writeOrReuseExact(path: string, bytes: Buffer): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  let handle: FileHandle | undefined;
-  try {
-    handle = await open(path, 'wx');
-    await handle.writeFile(bytes);
-    await handle.sync();
-    await handle.close();
-    handle = undefined;
-  } catch (error) {
-    if (handle !== undefined) {
-      await handle.close().catch(() => undefined);
-      await unlink(path).catch(() => undefined);
-    } else if (isAlreadyExists(error)) {
-      await verifyExisting(path, bytes);
-      return;
-    }
-    throw error;
-  }
-}
-
-async function verifyExisting(path: string, expected: Buffer): Promise<void> {
-  const metadata = await lstat(path);
-  if (!metadata.isFile() || metadata.isSymbolicLink()) {
-    throw new Error(
-      'Existing native raw-result manifest is not a regular file',
-    );
-  }
-  const actual = await readFile(path);
-  if (!actual.equals(expected)) {
-    throw new Error('Existing native raw-result manifest does not match');
-  }
-}
-
-function isAlreadyExists(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    (error as NodeJS.ErrnoException).code === 'EEXIST'
-  );
 }

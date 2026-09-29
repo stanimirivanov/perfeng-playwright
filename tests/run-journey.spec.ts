@@ -28,6 +28,10 @@ function integrity(bytes: Buffer): { sha256: string; sizeBytes: number } {
   };
 }
 
+function jsonBytes(value: unknown): Buffer {
+  return Buffer.from(`${JSON.stringify(value, undefined, 2)}\n`, 'utf8');
+}
+
 function options(
   cacheProfile: RunJourneyOptions['cacheProfile'],
   cacheObservations: boolean[],
@@ -418,7 +422,39 @@ test('writes measurement and observation artifacts as one owned operation', asyn
   );
 });
 
-test('removes newly created output when another artifact already exists', async ({}, testInfo) => {
+test('recovers exact payloads left before the integrity receipt', async ({}, testInfo) => {
+  const diagnostic = options('warm', [], new Set());
+  diagnostic.diagnosticMode = 'lightweight';
+  diagnostic.warmupIterations = 0;
+  diagnostic.measurementIterations = 1;
+  const capture = await captureJourney(chromium, diagnostic);
+  const measurementPath = testInfo.outputPath('recovery-measurements.json');
+  const observationsPath = testInfo.outputPath('recovery-observations.json');
+  const receiptPath = testInfo.outputPath('recovery-receipt.json');
+  const measurementBytes = jsonBytes(capture.measurements);
+  const observationBytes = jsonBytes(capture.observations);
+  await writeFile(measurementPath, measurementBytes);
+  await writeFile(observationsPath, observationBytes);
+
+  const paths = {
+    measurements: measurementPath,
+    receipt: receiptPath,
+    observations: observationsPath,
+  };
+  const first = await writeJourneyArtifacts(paths, capture, sourceCheckout);
+  const second = await writeJourneyArtifacts(paths, capture, sourceCheckout);
+
+  expect(first).toEqual(second);
+  expect(await readFile(measurementPath)).toEqual(measurementBytes);
+  expect(await readFile(observationsPath)).toEqual(observationBytes);
+  expect(JSON.parse(await readFile(receiptPath, 'utf8'))).toMatchObject({
+    schema: 'playwright-runner-receipt/v2',
+    runId: capture.measurements.runId,
+    testId: capture.measurements.testId,
+  });
+});
+
+test('publishes no missing output when another artifact already exists', async ({}, testInfo) => {
   const diagnostic = options('warm', [], new Set());
   diagnostic.diagnosticMode = 'lightweight';
   diagnostic.warmupIterations = 0;

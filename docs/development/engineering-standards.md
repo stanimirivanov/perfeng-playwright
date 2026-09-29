@@ -31,9 +31,9 @@ The module model and dependency direction are defined in the
 - Browser execution owns Playwright browser/context/page resources and deterministic cleanup.
 - Observation, trace, memory and smoothness modules collect bounded raw evidence. They do not infer
   performance diagnoses.
-- Artifact modules serialize exact payloads, reserve destinations and return integrity fields. They
-  do not upload or register artifacts. The separate native-worker adapter may transfer and register
-  those exact bytes only through lease-scoped server-issued grants.
+- Artifact modules serialize exact payloads, validate destinations, stage complete bytes and return
+  integrity fields. They do not upload or register artifacts. The separate native-worker adapter
+  may transfer and register those exact bytes only through lease-scoped server-issued grants.
 - Root modules are public/compatibility façades and CLI/configuration adapters. Implementation
   modules depend on responsibility-focused modules, not back through façades.
 - Scheduling, environment provisioning, storage, normalization, baselines and verdicts remain in
@@ -129,9 +129,14 @@ speculative collector abstractions.
 
 - Treat configuration, URLs, output paths, browser payloads and checkout metadata as untrusted
   input.
-- Reserve every requested destination before writing a multi-artifact result.
-- Write deterministic bytes and publish atomically and exclusively. Existing outputs are never
-  overwritten, and failed operations remove only files they created.
+- Validate every requested destination and fully stage every missing file before publishing a
+  multi-artifact result. Atomically create final names without replacement; do not claim that
+  multiple filesystem paths form one atomic transaction.
+- Write deterministic bytes and publish payloads before the integrity receipt. Receipt presence
+  commits the exact set. Complete payloads without a receipt are uncommitted recovery state and may
+  be reused only when their bytes match exactly.
+- Existing outputs are never overwritten. Cleanup removes only invocation-owned staging paths and
+  never unlinks final paths; a filesystem without safe same-directory hard links fails closed.
 - Keep semantic measurements, diagnostic sidecars and integrity receipts separate.
 - Integrity receipts bind run/test identity, capture metadata, exact checksums, byte counts,
   timestamps, selected iterations and native source provenance.
