@@ -32,7 +32,7 @@ jobs:
       - name: Run Linux verification
         run: make verify
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-failure-evidence-linux
           path: |
@@ -62,7 +62,7 @@ jobs:
       - name: Run Windows verification
         run: make verify
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-failure-evidence-windows
           path: |
