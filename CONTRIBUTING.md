@@ -25,7 +25,10 @@ Lowercase guidance does not silently create another normative level.
 | :------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------ |
 | Contributor workflow, issue timing, escalation and completion | This document                                                                                                             |
 | Concise contributor and agent entry point                     | [AGENTS.md](AGENTS.md)                                                                                                    |
+| Task-oriented documentation routing                           | [docs/README.md](docs/README.md)                                                                                          |
+| Coding harness and verification tiers                         | [docs/development/harness.md](docs/development/harness.md)                                                                |
 | Browser-runner and TypeScript engineering                     | [docs/development/engineering-standards.md](docs/development/engineering-standards.md)                                    |
+| Dependency admission and supply chain                         | [docs/development/dependency-policy.md](docs/development/dependency-policy.md)                                            |
 | Architecture decisions                                        | [docs/decisions](docs/decisions/README.md)                                                                                |
 | Cross-repository milestones                                   | [perfeng-environment roadmap](https://github.com/stanimirivanov/perfeng-environment/blob/main/docs/roadmap/milestones.md) |
 | Supported behavior, diagnostics and exact commands            | [README.md](README.md)                                                                                                    |
@@ -172,19 +175,11 @@ mutations MUST remain within requested scope and authority.
 
 ## Verification and constrained environments
 
-Install exact dependencies and the pinned Playwright Chromium build, then run:
-
-```sh
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm build
-pnpm test
-```
-
-`make validate` and `pnpm validate` wrap these repository checks. Browser tests prove functional
-behavior on the executing host; they do not establish that Linux CI and the native Windows
-reference worker produce comparable performance measurements.
+Run `make bootstrap` once, `make verify` for the network-independent inner loop, and
+`make validate` for complete acceptance. The exact commands and prerequisites are inventoried in
+the [harness guide](docs/development/harness.md). Browser tests prove functional behavior on the
+executing host; they do not establish that Linux CI and the native Windows reference worker produce
+comparable performance measurements.
 
 When a check cannot run because of sandbox, platform, network, credentials, browser installation
 or another environmental constraint, report the exact command as **not run**, the blocker and

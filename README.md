@@ -44,6 +44,10 @@ Contributor workflow and repository policy are defined in
 direction are in the [architecture guide](docs/development/architecture.md), and durable decisions
 are recorded in [ADRs](docs/decisions/README.md).
 
+Use the [documentation map](docs/README.md) to route work. The
+[coding harness](docs/development/harness.md) defines feedback tiers and the
+[dependency policy](docs/development/dependency-policy.md) defines admission and update rules.
+
 Use Node.js 24.18.0 and the pinned pnpm version. Install the Chromium build
 managed by the pinned Playwright package, then run the complete validation:
 

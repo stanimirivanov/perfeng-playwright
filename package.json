@@ -22,14 +22,18 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "architecture:check": "node tools/architecture-check.mjs",
     "docs:check": "typedoc --emit none",
     "run": "node dist/cli.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
+    "repo:check": "node tools/repo-check.mjs",
     "test": "playwright test",
     "typecheck": "tsc -p tsconfig.json",
-    "validate": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm docs:check && pnpm build && pnpm test"
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm docs:check && pnpm repo:check && pnpm architecture:check && pnpm build && pnpm test",
+    "supply-chain": "pnpm audit --audit-level high",
+    "validate": "pnpm verify && pnpm supply-chain"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
