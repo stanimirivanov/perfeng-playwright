@@ -53,7 +53,11 @@ public feature API       journey workflow        Native Worker lifecycle
 
 Implementation modules MUST NOT import root compatibility façades or executable entry points. A
 feature MAY depend on another feature's domain types or focused operation when the dependency is
-directional and the lifecycle owner remains clear. Circular feature dependencies are prohibited.
+directional and the lifecycle owner remains clear. New circular feature dependencies are prohibited.
+The existing `journey`/`observation` type-level cycle is an explicit transitional exception: journey
+coordinates evidence capture, while observation currently imports journey's artifact descriptor.
+The architecture gate permits only that exact cycle and requires removal of the exception when the
+shared evidence type gains a neutral owner.
 
 ## Boundaries and ownership
 
@@ -125,7 +129,8 @@ The current structure follows the selected architecture:
 - browser and CDP resource owners perform bounded cleanup;
 - Native Worker capability objects preserve lease authority instead of passing secrets as ordinary
   domain data;
-- no feature dependency cycle is required by the current design.
+- the known `journey`/`observation` type cycle is isolated as transitional debt rather than treated
+  as an approved dependency direction.
 
 Two constraints should guide the next implementation steps:
 
