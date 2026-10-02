@@ -1,5 +1,6 @@
 import { integer, requiredString } from '../configuration/primitives.js';
 import type { AcquiredNativeLease } from './acquisition.js';
+import { AcquiredNativeV2Lease } from './acquisition-v2.js';
 import { normalizeControlPlaneOrigin } from './configuration.js';
 import { enumMember } from './contract-values.js';
 import {
@@ -41,7 +42,7 @@ export class LeaseReleaseFailure extends Error {
 export interface LeaseReleaseRequest {
   controlPlaneOrigin: string;
   token: string;
-  authority: AcquiredNativeLease;
+  authority: AcquiredNativeLease | AcquiredNativeV2Lease;
   expectedRunRevision: number;
   reason: NativeLeaseReleaseReason;
   message?: string;
@@ -66,8 +67,14 @@ export async function releaseNativeLease(
     request.signal === undefined
       ? timeout
       : AbortSignal.any([request.signal, timeout]);
+  const authority = request.authority;
+  const v2 = authority instanceof AcquiredNativeV2Lease;
+  const lease =
+    authority instanceof AcquiredNativeV2Lease
+      ? authority.recipe
+      : authority.lease;
   const body: Record<string, unknown> = {
-    attemptId: request.authority.lease.attemptId,
+    attemptId: lease.attemptId,
     expectedRunRevision,
     reason,
   };
@@ -85,7 +92,7 @@ export async function releaseNativeLease(
   try {
     response = await send(
       new URL(
-        `/native-worker/v1/leases/${request.authority.lease.leaseId}/release`,
+        `/native-worker/v${v2 ? '2' : '1'}/leases/${lease.leaseId}/release`,
         origin,
       ),
       {
