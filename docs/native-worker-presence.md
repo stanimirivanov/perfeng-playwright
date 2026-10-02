@@ -7,8 +7,9 @@
   configuration; never put a token there or on the command line.
 - Supply the worker-audience token through `PERFENG_NATIVE_WORKER_TOKEN` for the process and use an
   HTTPS control-plane origin.
-- This release always reports `UNAVAILABLE`; it validates identity and qualification wiring but
-  cannot acquire or execute a Run yet.
+- Configuration version 1 reports to `/native-worker/v1/presence`; version 2 reports the smaller
+  baseline Chromium capability set to `/native-worker/v2/presence`.
+- Both versions always report `UNAVAILABLE`; neither can acquire or execute a Run yet.
 - Treat `authorizedToAcquire` as server policy, not proof that this heartbeat-only process is ready
   to accept work.
 
@@ -19,8 +20,9 @@ Kubernetes or object-store credentials.
 
 ## Configuration
 
-Copy [the example](../examples/native-worker-presence.json) outside the source checkout if local
-values differ. The closed version 1 document contains only non-secret values:
+Copy the [v1 example](../examples/native-worker-presence.json) or
+[v2 example](../examples/native-worker-v2-presence.json) outside the source checkout if local
+values differ. Both closed documents contain only non-secret values; the v1 document is:
 
 ```json
 {
@@ -34,6 +36,11 @@ values differ. The closed version 1 document contains only non-secret values:
 }
 ```
 
+For v2, set `schemaVersion` to `2` and `browsers` to exactly `["chromium"]`. Do not
+add Edge or Chrome: the reviewed v2 contract currently accepts baseline Chromium only.
+The version selects both the protocol document and the endpoint. Existing v1 configuration
+continues to send the original v1 capabilities and is not silently upgraded.
+
 `controlPlaneOrigin` must be an HTTPS origin without credentials, a path, query, or fragment. The
 environment identity and digest must name the separately captured and server-approved
 `browser-environment/v1` evidence. Browser values describe installed, operator-reviewed families;
@@ -46,7 +53,7 @@ The command derives these values instead of accepting them from configuration:
 - source repository, exact Git revision, `pnpm-lock.yaml` path, and lock checksum from a clean
   checkout;
 - the package version and Native Worker protocol generation; and
-- only the artifact and diagnostic capabilities implemented by the current runner.
+- the version-specific artifact and diagnostic capability identifiers from the reviewed contract.
 
 Dirty source, an unsupported platform or architecture, invalid evidence, an unsafe origin, or an
 unknown configuration field fails before an HTTP request is made.
@@ -98,19 +105,20 @@ register artifacts, or report a terminal outcome. Those operations require later
 Do not reinterpret a running heartbeat as a ready worker; `authorizedToAcquire` remains server
 policy and the process deliberately does not act on it.
 
-The vendored presence examples and lock under `vendor/contracts` pin byte-identical fixtures from
-perfeng-contracts bundle 0.17.0 and record the reviewed full OpenAPI checksum. Updating the API
-requires an explicit contract repin and compatibility review rather than accepting a moving schema.
+The vendored v1 presence examples and lock under `vendor/contracts` pin byte-identical fixtures from
+perfeng-contracts bundle 0.17.0; the v2 presence examples pin bundle 0.18.0. The lock records both
+reviewed full OpenAPI checksums. Updating either API requires an explicit contract repin and
+compatibility review rather than accepting a moving schema.
 
-The same lock separately pins the Native Worker v2 acquisition and lease examples from bundle
-0.18.0, together with the reviewed v2 OpenAPI checksum. The pure v2 recipe parser verifies the
+The same lock pins the Native Worker v2 acquisition and lease examples. The pure v2 recipe parser verifies the
 closed baseline Chromium lease, exact two-slot artifact plan, supported search journey, and
 current host and runner qualification evidence. It projects the reviewed values into the existing
 runner configuration without choosing cache, repetition, environment or browser defaults. The
 SUT target environment ID remains distinct from the qualified Windows host profile ID. This
-parser does not contact the control plane, report v2 presence, acquire a v2 lease or launch a
-browser. The worker continues to report `UNAVAILABLE` until the complete v2 lifecycle is
-implemented and verified.
+parser does not contact the control plane, acquire a v2 lease or launch a browser. The presence
+command can report v2 presence, but the worker continues to report `UNAVAILABLE` until the
+complete v2 lifecycle is implemented and verified. A response with
+`authorizedToAcquire: true` is server policy, not permission for this process to acquire work.
 
 The package also contains contract-validated lease acquisition, renewal, release and upload-grant
 transports needed by the next worker lifecycle slice. Acquisition distinguishes an acquired lease

@@ -9,31 +9,24 @@ export type WorkerAvailability = 'AVAILABLE' | 'DRAINING' | 'UNAVAILABLE';
 /** Qualification outcome for the reported environment and runner provenance. */
 export type QualificationStatus = 'QUALIFIED' | 'UNQUALIFIED' | 'STALE';
 
-export interface WorkerPresenceConfiguration {
-  schemaVersion: 1;
+interface WorkerPresenceConfigurationFields {
   controlPlaneOrigin: string;
-  browsers: BrowserFamily[];
   environment: {
     id: string;
     sha256: string;
   };
 }
 
-export interface WorkerPresence {
-  protocolVersion: 1;
+/** Version-selecting, non-secret configuration for one Native Worker presence endpoint. */
+export type WorkerPresenceConfiguration = WorkerPresenceConfigurationFields &
+  (
+    | { schemaVersion: 1; browsers: BrowserFamily[] }
+    | { schemaVersion: 2; browsers: ['chromium'] }
+  );
+
+interface WorkerPresenceFields {
   agentVersion: string;
   availability: 'UNAVAILABLE';
-  capabilities: {
-    capacity: 1;
-    tool: 'playwright';
-    operatingSystem: 'windows';
-    architecture: WorkerArchitecture;
-    browsers: BrowserFamily[];
-    runnerContract: 1;
-    executionArtifacts: ['source-checkout'];
-    artifactKinds: ['measurements', 'diagnostics'];
-    diagnosticModes: ['lightweight', 'trace', 'heap'];
-  };
   qualificationEvidence: {
     environmentId: string;
     environmentSha256: string;
@@ -46,6 +39,37 @@ export interface WorkerPresence {
     };
   };
 }
+
+interface WorkerCapabilities {
+  capacity: 1;
+  tool: 'playwright';
+  operatingSystem: 'windows';
+  architecture: WorkerArchitecture;
+  executionArtifacts: ['source-checkout'];
+}
+
+/** Closed presence document for the selected Native Worker protocol generation. */
+export type WorkerPresence = WorkerPresenceFields &
+  (
+    | {
+        protocolVersion: 1;
+        capabilities: WorkerCapabilities & {
+          browsers: BrowserFamily[];
+          runnerContract: 1;
+          artifactKinds: ['measurements', 'diagnostics'];
+          diagnosticModes: ['lightweight', 'trace', 'heap'];
+        };
+      }
+    | {
+        protocolVersion: 2;
+        capabilities: WorkerCapabilities & {
+          browsers: ['chromium'];
+          runnerContract: 2;
+          artifactKinds: ['measurements', 'manifest'];
+          diagnosticModes: ['baseline'];
+        };
+      }
+  );
 
 /** Server decision explaining whether the reported worker is qualified. */
 export interface QualificationDecision {

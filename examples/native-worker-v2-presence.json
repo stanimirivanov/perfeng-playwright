@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "controlPlaneOrigin": "https://control-plane.perfeng.invalid",
+  "browsers": ["chromium"],
+  "environment": {
+    "id": "windows-mainstream",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}

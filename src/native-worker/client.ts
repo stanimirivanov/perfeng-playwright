@@ -60,6 +60,10 @@ export async function reportWorkerPresence(
 ): Promise<WorkerPresenceStatus> {
   validateWorkerCredential(request.token);
   const origin = normalizeControlPlaneOrigin(request.controlPlaneOrigin);
+  const version: unknown = request.presence.protocolVersion;
+  if (version !== 1 && version !== 2) {
+    throw new Error('Unsupported Native Worker presence protocolVersion');
+  }
   const options: RequestInit = {
     method: 'POST',
     redirect: 'error',
@@ -76,7 +80,7 @@ export async function reportWorkerPresence(
   let response: Response;
   try {
     response = await send(
-      new URL('/native-worker/v1/presence', origin),
+      new URL(`/native-worker/v${String(version)}/presence`, origin),
       options,
     );
   } catch {

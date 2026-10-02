@@ -17,6 +17,38 @@ export function createWorkerPresence(inputs: PresenceInputs): WorkerPresence {
   const architecture = workerArchitecture(inputs.architecture);
   const { configuration, source } = inputs;
 
+  const qualificationEvidence = {
+    environmentId: configuration.environment.id,
+    environmentSha256: configuration.environment.sha256,
+    runner: {
+      kind: 'source-checkout' as const,
+      repository: source.repository,
+      revision: source.gitSha,
+      lockfile: source.dependencyLock.path,
+      lockfileSha256: source.dependencyLock.sha256,
+    },
+  };
+
+  if (configuration.schemaVersion === 2) {
+    return {
+      protocolVersion: 2,
+      agentVersion: inputs.agentVersion,
+      availability: 'UNAVAILABLE',
+      capabilities: {
+        capacity: 1,
+        tool: 'playwright',
+        operatingSystem: 'windows',
+        architecture,
+        browsers: ['chromium'],
+        runnerContract: 2,
+        executionArtifacts: ['source-checkout'],
+        artifactKinds: ['measurements', 'manifest'],
+        diagnosticModes: ['baseline'],
+      },
+      qualificationEvidence,
+    };
+  }
+
   return {
     protocolVersion: 1,
     agentVersion: inputs.agentVersion,
@@ -32,17 +64,7 @@ export function createWorkerPresence(inputs: PresenceInputs): WorkerPresence {
       artifactKinds: ['measurements', 'diagnostics'],
       diagnosticModes: ['lightweight', 'trace', 'heap'],
     },
-    qualificationEvidence: {
-      environmentId: configuration.environment.id,
-      environmentSha256: configuration.environment.sha256,
-      runner: {
-        kind: 'source-checkout',
-        repository: source.repository,
-        revision: source.gitSha,
-        lockfile: source.dependencyLock.path,
-        lockfileSha256: source.dependencyLock.sha256,
-      },
-    },
+    qualificationEvidence,
   };
 }
 
