@@ -102,6 +102,16 @@ The vendored presence examples and lock under `vendor/contracts` pin byte-identi
 perfeng-contracts bundle 0.17.0 and record the reviewed full OpenAPI checksum. Updating the API
 requires an explicit contract repin and compatibility review rather than accepting a moving schema.
 
+The same lock separately pins the Native Worker v2 acquisition and lease examples from bundle
+0.18.0, together with the reviewed v2 OpenAPI checksum. The pure v2 recipe parser verifies the
+closed baseline Chromium lease, exact two-slot artifact plan, supported search journey, and
+current host and runner qualification evidence. It projects the reviewed values into the existing
+runner configuration without choosing cache, repetition, environment or browser defaults. The
+SUT target environment ID remains distinct from the qualified Windows host profile ID. This
+parser does not contact the control plane, report v2 presence, acquire a v2 lease or launch a
+browser. The worker continues to report `UNAVAILABLE` until the complete v2 lifecycle is
+implemented and verified.
+
 The package also contains contract-validated lease acquisition, renewal, release and upload-grant
 transports needed by the next worker lifecycle slice. Acquisition distinguishes an acquired lease
 from a `204` idle response, validates the complete assignment and artifact plan, and keeps the
