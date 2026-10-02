@@ -80,7 +80,9 @@ perfeng-contracts bundle 0.17.0 at revision
 `be847a4c7c0ad22c799389410a8c234d5492abc3` for v1. A separate reviewed
 bundle 0.18.0 pin supplies v2 presence and lease fixtures. Configuration version 2
 reports baseline Chromium presence to `/native-worker/v2/presence`; it still reports
-`UNAVAILABLE`, never acquires work, and does not run a lease yet. It
+`UNAVAILABLE`, never acquires work, and does not run a lease yet. A separate
+v2 acquisition transport can validate a server-issued lease against current
+qualification evidence, but the CLI does not call it. The worker
 requires HTTPS, refuses redirects, bounds response bytes, and never reads a
 credential from JSON or a command-line argument. Its raw-result path constructs
 deterministic `raw-result/v2` bytes from matching measurements, immutable

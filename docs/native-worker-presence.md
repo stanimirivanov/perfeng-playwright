@@ -10,6 +10,8 @@
 - Configuration version 1 reports to `/native-worker/v1/presence`; version 2 reports the smaller
   baseline Chromium capability set to `/native-worker/v2/presence`.
 - Both versions always report `UNAVAILABLE`; neither can acquire or execute a Run yet.
+- The v2 acquisition transport is available for protocol composition and tests, but the CLI does
+  not invoke it; the v2 server acquisition and execution lifecycle remain separate work.
 - Treat `authorizedToAcquire` as server policy, not proof that this heartbeat-only process is ready
   to accept work.
 
@@ -110,13 +112,17 @@ perfeng-contracts bundle 0.17.0; the v2 presence examples pin bundle 0.18.0. The
 reviewed full OpenAPI checksums. Updating either API requires an explicit contract repin and
 compatibility review rather than accepting a moving schema.
 
-The same lock pins the Native Worker v2 acquisition and lease examples. The pure v2 recipe parser verifies the
-closed baseline Chromium lease, exact two-slot artifact plan, supported search journey, and
+The same lock pins the Native Worker v2 acquisition and lease examples. The pure v2 recipe parser
+verifies the closed baseline Chromium lease, exact two-slot artifact plan, supported search journey, and
 current host and runner qualification evidence. It projects the reviewed values into the existing
 runner configuration without choosing cache, repetition, environment or browser defaults. The
 SUT target environment ID remains distinct from the qualified Windows host profile ID. This
-parser does not contact the control plane, acquire a v2 lease or launch a browser. The presence
-command can report v2 presence, but the worker continues to report `UNAVAILABLE` until the
+parser itself does not contact the control plane or launch a browser. The separate v2 acquisition
+transport sends the closed v2 request to `/native-worker/v2/leases`, bounds the long poll, distinguishes
+`204` idle from a `200` lease, and parses the lease against current qualification evidence before
+returning its capability-bearing authority. It refuses redirects, discards error bodies, and never
+serializes the `X-Perfeng-Lease` capability. The presence command does not call this transport.
+The worker continues to report `UNAVAILABLE` until the
 complete v2 lifecycle is implemented and verified. A response with
 `authorizedToAcquire: true` is server policy, not permission for this process to acquire work.
 
