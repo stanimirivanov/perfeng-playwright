@@ -33,7 +33,7 @@ export function parseWorkerPresenceConfiguration(
     'browsers',
     'environment',
   ]);
-  if (source.schemaVersion !== 1) {
+  if (source.schemaVersion !== 1 && source.schemaVersion !== 2) {
     throw new Error('Unsupported worker presence configuration schemaVersion');
   }
 
@@ -51,11 +51,28 @@ export function parseWorkerPresenceConfiguration(
     throw new Error('environment.sha256 must be a lowercase SHA-256 digest');
   }
 
+  const controlPlaneOrigin = normalizeControlPlaneOrigin(
+    source.controlPlaneOrigin,
+  );
+  const browsers = parseBrowsers(source.browsers);
+  const environmentEvidence = { id: environmentId, sha256: environmentSha256 };
+  if (source.schemaVersion === 2) {
+    if (browsers.length !== 1 || browsers[0] !== 'chromium') {
+      throw new Error('Version 2 presence requires only chromium');
+    }
+    return {
+      schemaVersion: 2,
+      controlPlaneOrigin,
+      browsers: ['chromium'],
+      environment: environmentEvidence,
+    };
+  }
+
   return {
     schemaVersion: 1,
-    controlPlaneOrigin: normalizeControlPlaneOrigin(source.controlPlaneOrigin),
-    browsers: parseBrowsers(source.browsers),
-    environment: { id: environmentId, sha256: environmentSha256 },
+    controlPlaneOrigin,
+    browsers,
+    environment: environmentEvidence,
   };
 }
 

@@ -77,9 +77,10 @@ execution loop can accept work.
 Configuration and exact operating instructions are in the
 [native worker presence guide](docs/native-worker-presence.md). The client pins
 perfeng-contracts bundle 0.17.0 at revision
-`be847a4c7c0ad22c799389410a8c234d5492abc3`, matching the control plane. A
-separate reviewed bundle 0.18.0 pin supplies the v2 lease fixture for a pure
-baseline-recipe parser; the worker does not send v2 requests or run that lease yet. It
+`be847a4c7c0ad22c799389410a8c234d5492abc3` for v1. A separate reviewed
+bundle 0.18.0 pin supplies v2 presence and lease fixtures. Configuration version 2
+reports baseline Chromium presence to `/native-worker/v2/presence`; it still reports
+`UNAVAILABLE`, never acquires work, and does not run a lease yet. It
 requires HTTPS, refuses redirects, bounds response bytes, and never reads a
 credential from JSON or a command-line argument. Its raw-result path constructs
 deterministic `raw-result/v2` bytes from matching measurements, immutable

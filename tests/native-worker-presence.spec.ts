@@ -27,6 +27,12 @@ const configuration: WorkerPresenceConfiguration = {
   },
 };
 
+const v2Configuration: WorkerPresenceConfiguration = {
+  ...configuration,
+  schemaVersion: 2,
+  browsers: ['chromium'],
+};
+
 const source: SourceCheckoutArtifact = {
   kind: 'source-checkout',
   repository: 'https://github.com/stanimirivanov/perfeng-playwright',
@@ -51,6 +57,42 @@ test('parses a closed worker presence configuration', () => {
   expect(
     parseWorkerPresenceConfiguration(JSON.stringify(configuration)),
   ).toEqual(configuration);
+  expect(
+    parseWorkerPresenceConfiguration(JSON.stringify(v2Configuration)),
+  ).toEqual(v2Configuration);
+});
+
+test('keeps the distributed v2 example valid and unavailable by construction', async () => {
+  const example = await readFile(
+    'examples/native-worker-v2-presence.json',
+    'utf8',
+  );
+  const parsed = parseWorkerPresenceConfiguration(example);
+  expect(parsed).toEqual(v2Configuration);
+  expect(
+    createWorkerPresence({
+      configuration: parsed,
+      source,
+      agentVersion: '0.13.0',
+      platform: 'win32',
+      architecture: 'x64',
+    }).availability,
+  ).toBe('UNAVAILABLE');
+});
+
+test('rejects v1-only browsers from a v2 presence configuration', () => {
+  for (const browsers of [['edge'], ['chromium', 'edge'], ['chrome']]) {
+    expect(() =>
+      parseWorkerPresenceConfiguration(
+        JSON.stringify({ ...v2Configuration, browsers }),
+      ),
+    ).toThrow('requires only chromium');
+  }
+  expect(() =>
+    parseWorkerPresenceConfiguration(
+      JSON.stringify({ ...v2Configuration, schemaVersion: 3 }),
+    ),
+  ).toThrow('Unsupported worker presence configuration schemaVersion');
 });
 
 test('rejects unsafe origins and invalid qualification identifiers', () => {
@@ -120,6 +162,38 @@ test('reports only verified Windows capabilities and remains unavailable', () =>
   ).toThrow('requires Windows');
 });
 
+test('reports only the reviewed v2 baseline Chromium capabilities', async () => {
+  const reviewed = JSON.parse(
+    await readFile(
+      'vendor/contracts/native-worker/v2/examples/presence.json',
+      'utf8',
+    ),
+  ) as Record<string, unknown>;
+  const actual = createWorkerPresence({
+    configuration: v2Configuration,
+    source,
+    agentVersion: '0.13.0',
+    platform: 'win32',
+    architecture: 'x64',
+  });
+  expect(actual).toEqual({
+    ...reviewed,
+    agentVersion: '0.13.0',
+    availability: 'UNAVAILABLE',
+    qualificationEvidence: {
+      environmentId: 'windows-mainstream',
+      environmentSha256: 'a'.repeat(64),
+      runner: {
+        kind: 'source-checkout',
+        repository: source.repository,
+        revision: source.gitSha,
+        lockfile: 'pnpm-lock.yaml',
+        lockfileSha256: 'c'.repeat(64),
+      },
+    },
+  });
+});
+
 test('posts presence to the fixed endpoint with bearer authentication', async () => {
   const responseDocument = await readFile(
     'vendor/contracts/native-worker/v1/examples/presence-status.json',
@@ -158,6 +232,63 @@ test('posts presence to the fixed endpoint with bearer authentication', async ()
   expect(status.workerId).toBe('windows-laptop-01');
   expect(status.qualification.status).toBe('QUALIFIED');
   expect(status.authorizedToAcquire).toBe(true);
+});
+
+test('posts v2 presence to the isolated endpoint and parses its acknowledgement', async () => {
+  const responseDocument = await readFile(
+    'vendor/contracts/native-worker/v2/examples/presence-status.json',
+    'utf8',
+  );
+  const v2Presence = createWorkerPresence({
+    configuration: v2Configuration,
+    source,
+    agentVersion: '0.13.0',
+    platform: 'win32',
+    architecture: 'x64',
+  });
+  const send = ((input: URL | RequestInfo, init?: RequestInit) => {
+    expect((input as URL).href).toBe(
+      'https://control-plane.perfeng.invalid/native-worker/v2/presence',
+    );
+    expect(new Headers(init?.headers).get('authorization')).toBe(
+      'Bearer worker-secret',
+    );
+    expect(JSON.parse(init?.body as string)).toEqual(v2Presence);
+    return Promise.resolve(new Response(responseDocument, { status: 200 }));
+  }) as typeof fetch;
+
+  const status = await reportWorkerPresence(
+    {
+      controlPlaneOrigin: v2Configuration.controlPlaneOrigin,
+      token: 'worker-secret',
+      presence: v2Presence,
+    },
+    send,
+  );
+  expect(status.workerId).toBe('windows-laptop-01');
+  expect(status.nextHeartbeatSeconds).toBe(30);
+});
+
+test('rejects an unsupported presence protocol before network access', async () => {
+  let sent = false;
+  const send = (() => {
+    sent = true;
+    return Promise.reject(new Error('unexpected network request'));
+  }) as typeof fetch;
+  await expect(
+    reportWorkerPresence(
+      {
+        controlPlaneOrigin: configuration.controlPlaneOrigin,
+        token: 'worker-secret',
+        presence: {
+          ...presence(),
+          protocolVersion: 3,
+        } as unknown as WorkerPresence,
+      },
+      send,
+    ),
+  ).rejects.toThrow('Unsupported Native Worker presence protocolVersion');
+  expect(sent).toBe(false);
 });
 
 test('keeps credentials and server bodies out of request failures', async () => {

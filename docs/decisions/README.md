@@ -83,3 +83,5 @@ How will assumptions and consequences be verified?
 
 - [ADR-0001: Publish artifacts with receipt-last commitment](0001-publish-artifacts-with-receipt-last-commitment.md)
   — Accepted
+- [ADR-0002: Select Native Worker presence generation explicitly](0002-select-native-worker-presence-generation-explicitly.md)
+  — Accepted
