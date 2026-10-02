@@ -82,7 +82,8 @@ bundle 0.18.0 pin supplies v2 presence and lease fixtures. Configuration version
 reports baseline Chromium presence to `/native-worker/v2/presence`; it still reports
 `UNAVAILABLE`, never acquires work, and does not run a lease yet. A separate
 v2 acquisition transport can validate a server-issued lease against current
-qualification evidence, but the CLI does not call it. The worker
+qualification evidence. The renewal and release transports route v2 authority
+to the matching v2 endpoints, but the CLI does not call any lease transport. The worker
 requires HTTPS, refuses redirects, bounds response bytes, and never reads a
 credential from JSON or a command-line argument. Its raw-result path constructs
 deterministic `raw-result/v2` bytes from matching measurements, immutable

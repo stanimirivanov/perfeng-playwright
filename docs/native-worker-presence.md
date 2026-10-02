@@ -12,6 +12,8 @@
 - Both versions always report `UNAVAILABLE`; neither can acquire or execute a Run yet.
 - The v2 acquisition transport is available for protocol composition and tests, but the CLI does
   not invoke it; the v2 server acquisition and execution lifecycle remain separate work.
+- V2 renewal and release can preserve or relinquish an acquired v2 attempt, but they do not make
+  the presence-only worker runnable.
 - Treat `authorizedToAcquire` as server policy, not proof that this heartbeat-only process is ready
   to accept work.
 
@@ -131,6 +133,14 @@ transports needed by the next worker lifecycle slice. Acquisition distinguishes 
 from a `204` idle response, validates the complete assignment and artifact plan, and keeps the
 `X-Perfeng-Lease` capability out of JSON and diagnostic inspection. Each long-poll request is
 bounded to the requested server wait plus five seconds.
+
+Renewal and release accept either v1 or v2 acquired authority. The authority selects the matching
+versioned endpoint; the attempt ID, expected Run revision and opaque lease capability remain bound
+to that same authority. V2 renewal validates the returned lease and attempt fence and cancellation
+deadline; v2 release accepts only a `204` acknowledgement. Neither operation is called by the CLI.
+Upload-grant, artifact-registration and terminal transports remain v1-only until their v2
+boundaries are reviewed. The server must not issue v2 work merely because these two lifecycle
+transports exist.
 
 The current plan requires `playwright-measurements/v2` for the `measurements` slot and
 `raw-result/v2` for the `manifest` slot. Acquisition rejects the obsolete hyphenated placeholders

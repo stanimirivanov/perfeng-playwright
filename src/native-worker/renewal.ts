@@ -5,6 +5,7 @@ import {
   record,
 } from '../configuration/primitives.js';
 import type { AcquiredNativeLease } from './acquisition.js';
+import { AcquiredNativeV2Lease } from './acquisition-v2.js';
 import { normalizeControlPlaneOrigin } from './configuration.js';
 import {
   boundedInteger,
@@ -53,7 +54,7 @@ export class LeaseRenewalFailure extends Error {
 export interface LeaseRenewalRequest {
   controlPlaneOrigin: string;
   token: string;
-  authority: AcquiredNativeLease;
+  authority: AcquiredNativeLease | AcquiredNativeV2Lease;
   expectedRunRevision: number;
   phase: NativeExecutionPhase;
   signal?: AbortSignal;
@@ -76,8 +77,14 @@ export async function renewNativeLease(
     request.signal === undefined
       ? timeout
       : AbortSignal.any([request.signal, timeout]);
+  const authority = request.authority;
+  const v2 = authority instanceof AcquiredNativeV2Lease;
+  const lease =
+    authority instanceof AcquiredNativeV2Lease
+      ? authority.recipe
+      : authority.lease;
   const body = {
-    attemptId: request.authority.lease.attemptId,
+    attemptId: lease.attemptId,
     expectedRunRevision,
     phase,
   };
@@ -92,7 +99,7 @@ export async function renewNativeLease(
   try {
     response = await send(
       new URL(
-        `/native-worker/v1/leases/${request.authority.lease.leaseId}/renew`,
+        `/native-worker/v${v2 ? '2' : '1'}/leases/${lease.leaseId}/renew`,
         origin,
       ),
       {
@@ -116,8 +123,8 @@ export async function renewNativeLease(
 
   const renewal = parseNativeLeaseRenewal(await readBoundedResponse(response));
   if (
-    renewal.leaseId !== request.authority.lease.leaseId ||
-    renewal.attemptId !== request.authority.lease.attemptId ||
+    renewal.leaseId !== lease.leaseId ||
+    renewal.attemptId !== lease.attemptId ||
     renewal.runRevision < expectedRunRevision
   ) {
     throw new Error('Native worker lease renewal changed its attempt fence');
