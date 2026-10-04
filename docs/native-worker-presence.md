@@ -237,10 +237,20 @@ revision and lock before creating state. It requires an existing, operator-owned
 root; the operator must locate that root outside the source checkout. Preparation then creates one
 exclusive directory named from the Run and attempt IDs. The directory contains a lease-derived
 baseline configuration. Its fixed measurement, receipt and manifest paths do not exist until later
-steps publish them. The returned command
-arguments are for the runner CLI after a separately reviewed Node executable and entry point have
-been selected. Neither worker credentials nor the opaque lease capability are written to the
+steps publish them. The returned command arguments are for the runner CLI after a separately
+reviewed Node executable and entry point are selected. Neither worker credentials nor the opaque
+lease capability are written to the
 configuration. An existing attempt directory is never reused, replaced or removed automatically.
 If preparation fails after directory creation, retain that directory for inspection; restart
 recovery and cleanup policy belong to the lifecycle coordinator. Windows directory mode bits are
 not an access-control policy, so the operator must provision a spool root with suitable ACLs.
+
+Before a baseline measurement file can be offered for upload, local artifact verification requires
+the runner's committed receipt. It verifies the receipt's Run, test and source-checkout identity
+against the v2 lease, rejects diagnostic slots, and streams the measurement file to check its size
+and SHA-256 against both the receipt and the lease's artifact-plan maximum. Missing, symlinked,
+oversized, changing or mismatched files fail without deleting local evidence or contacting the
+control plane. The receipt has a 64 KiB local bound. This step does not parse measurement semantics
+or prove that an untrusted local writer told the truth; a later lifecycle step must validate the
+payload against the recipe before publication, and the server remains the authority for registered
+evidence.
