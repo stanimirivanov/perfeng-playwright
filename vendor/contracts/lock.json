@@ -7,7 +7,7 @@
   "v2BundleVersion": "0.18.0",
   "nativeWorkerApiV2Version": "2.0.0",
   "reviewedV2OpenApiSha256": "0b4a89d04ecc310fcb5e405a87458a8456a1ca0733b9466ed0e250132882d161",
-  "transformation": "V1 examples remain byte-identical to their original reviewed revision. V2 presence, acquisition, renewal, release, upload-grant and artifact-registration examples are copied byte-for-byte from the separately reviewed 0.18.0 revision; each OpenAPI checksum identifies its complete API generation.",
+  "transformation": "V1 examples remain byte-identical to their original reviewed revision. V2 presence, acquisition, renewal, release, upload-grant, artifact-registration and terminal-reporting examples are copied byte-for-byte from the separately reviewed 0.18.0 revision; each OpenAPI checksum identifies its complete API generation.",
   "files": {
     "native-worker/v1/examples/acquire.json": "d7d9b2b6e5e290a688810c083185b69b2b1c06cc95e4223619b343e9ad608371",
     "native-worker/v1/examples/artifact.json": "e2018a96a6d6ded52ddbecbedf52ac02bc3be68009edb370f493a231bbbad394",
@@ -33,6 +33,10 @@
     "native-worker/v2/examples/renew.json": "5bd8ea934ecda99529d1cf53917299518374c8ffea4c1bb239123f60f9bd1899",
     "native-worker/v2/examples/renewal.json": "f88577548b4de149ffc4b9a57c46988d42e05b0aa2e8910b3c605747c72c711b",
     "native-worker/v2/examples/release.json": "061cd2b1ca205dfe5f1c4bdb16b57d51d28575424e9776ba1e7533e764dbbe2b",
+    "native-worker/v2/examples/terminal-ack-duplicate.json": "c95eaca9f3a09988eeb3ca840a8e709374c87f1292fccdba6978d5a60adfb6cc",
+    "native-worker/v2/examples/terminal-ack.json": "a8370ee4c77b75250236cae2b11aac6eecb85a1ff8756f735823c84301c921ed",
+    "native-worker/v2/examples/terminal-completed.json": "6baa44ff01d2f522e862cc45e232aa0acc5f06d558e8fec1de4e60961af070ed",
+    "native-worker/v2/examples/terminal-failed.json": "33103e3b2274edc180fe3675f4673440f9d7bc14979c5f2670000f5e98efb3cd",
     "native-worker/v2/examples/upload-grant.json": "dc2621e77497278af364b9ca857759f00d8e5f887556f0280a11502ea43df00b",
     "native-worker/v2/examples/upload-request.json": "1b65ecd3bc2c7cdb5776cab9aeff45f755cee79834117416197a7eb4b28f3de1"
   },
