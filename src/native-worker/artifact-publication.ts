@@ -1,4 +1,5 @@
 import type { AcquiredNativeLease } from './acquisition.js';
+import type { AcquiredNativeV2Lease } from './acquisition-v2.js';
 import { registerNativeArtifact } from './artifact-registration.js';
 import { uploadNativeArtifact } from './artifact-upload.js';
 import type { NativeArtifactReference } from './types.js';
@@ -7,7 +8,7 @@ import { createNativeUploadGrant } from './upload-grant.js';
 export interface NativeArtifactPublicationRequest {
   controlPlaneOrigin: string;
   token: string;
-  authority: AcquiredNativeLease;
+  authority: AcquiredNativeLease | AcquiredNativeV2Lease;
   expectedRunRevision: number;
   slot: string;
   path: string;

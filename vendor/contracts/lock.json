@@ -7,7 +7,7 @@
   "v2BundleVersion": "0.18.0",
   "nativeWorkerApiV2Version": "2.0.0",
   "reviewedV2OpenApiSha256": "0b4a89d04ecc310fcb5e405a87458a8456a1ca0733b9466ed0e250132882d161",
-  "transformation": "V1 examples remain byte-identical to their original reviewed revision. V2 presence, acquisition, renewal and release examples are copied byte-for-byte from the separately reviewed 0.18.0 revision; each OpenAPI checksum identifies its complete API generation.",
+  "transformation": "V1 examples remain byte-identical to their original reviewed revision. V2 presence, acquisition, renewal, release, upload-grant and artifact-registration examples are copied byte-for-byte from the separately reviewed 0.18.0 revision; each OpenAPI checksum identifies its complete API generation.",
   "files": {
     "native-worker/v1/examples/acquire.json": "d7d9b2b6e5e290a688810c083185b69b2b1c06cc95e4223619b343e9ad608371",
     "native-worker/v1/examples/artifact.json": "e2018a96a6d6ded52ddbecbedf52ac02bc3be68009edb370f493a231bbbad394",
@@ -25,12 +25,16 @@
     "native-worker/v1/examples/upload-grant.json": "dc2621e77497278af364b9ca857759f00d8e5f887556f0280a11502ea43df00b",
     "native-worker/v1/examples/upload-request.json": "1b65ecd3bc2c7cdb5776cab9aeff45f755cee79834117416197a7eb4b28f3de1",
     "native-worker/v2/examples/acquire.json": "e9ba2464e978e4383b43e90cfe305d646fc2c9005049d1dd20698f223cd80b10",
+    "native-worker/v2/examples/artifact.json": "e2018a96a6d6ded52ddbecbedf52ac02bc3be68009edb370f493a231bbbad394",
     "native-worker/v2/examples/lease.json": "f06403a7140e87035806fd871186a3e834587757c9db3a5fc3cc7253dfeaed98",
     "native-worker/v2/examples/presence.json": "b9083e74a91730567792018ba9771add11eb86f18a18ab59832552a2ef807d0d",
     "native-worker/v2/examples/presence-status.json": "24bead9a7db89549dff75360ea721b9579007702b10a0f70407265fa9a9ba9fd",
+    "native-worker/v2/examples/register-artifact.json": "ed83347f66f68b73ac2898a5c47a0659d452eb2d9bb3f0476965166e7d044ccc",
     "native-worker/v2/examples/renew.json": "5bd8ea934ecda99529d1cf53917299518374c8ffea4c1bb239123f60f9bd1899",
     "native-worker/v2/examples/renewal.json": "f88577548b4de149ffc4b9a57c46988d42e05b0aa2e8910b3c605747c72c711b",
-    "native-worker/v2/examples/release.json": "061cd2b1ca205dfe5f1c4bdb16b57d51d28575424e9776ba1e7533e764dbbe2b"
+    "native-worker/v2/examples/release.json": "061cd2b1ca205dfe5f1c4bdb16b57d51d28575424e9776ba1e7533e764dbbe2b",
+    "native-worker/v2/examples/upload-grant.json": "dc2621e77497278af364b9ca857759f00d8e5f887556f0280a11502ea43df00b",
+    "native-worker/v2/examples/upload-request.json": "1b65ecd3bc2c7cdb5776cab9aeff45f755cee79834117416197a7eb4b28f3de1"
   },
   "reviewedOpenApiSha256": "46c2dea401c086b9ba748d1214fea5795a245f56eb8226e38ed03922a98ca51d"
 }

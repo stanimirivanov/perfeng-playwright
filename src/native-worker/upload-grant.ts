@@ -2,6 +2,7 @@ import { inspect } from 'node:util';
 
 import { exactKeys, integer, record } from '../configuration/primitives.js';
 import type { AcquiredNativeLease } from './acquisition.js';
+import { AcquiredNativeV2Lease } from './acquisition-v2.js';
 import { normalizeControlPlaneOrigin } from './configuration.js';
 import {
   absoluteHttpsUrl,
@@ -49,6 +50,7 @@ export class UploadGrantFailure extends Error {
 
 export class AcquiredNativeUploadGrant {
   readonly grant: NativeUploadGrantDetails;
+  readonly protocolVersion: 1 | 2;
   readonly #url: string;
   readonly #contentType: string;
   readonly #checksumSha256: string;
@@ -56,8 +58,10 @@ export class AcquiredNativeUploadGrant {
   constructor(
     grant: NativeUploadGrantDetails,
     authorization: NativeUploadAuthorization,
+    protocolVersion: 1 | 2 = 1,
   ) {
     this.grant = grant;
+    this.protocolVersion = protocolVersion;
     this.#url = authorization.url;
     this.#contentType = authorization.headers['content-type'];
     this.#checksumSha256 = authorization.headers['x-amz-checksum-sha256'];
@@ -92,7 +96,7 @@ export class AcquiredNativeUploadGrant {
 export interface UploadGrantRequest {
   controlPlaneOrigin: string;
   token: string;
-  authority: AcquiredNativeLease;
+  authority: AcquiredNativeLease | AcquiredNativeV2Lease;
   expectedRunRevision: number;
   slot: string;
   size: number;
@@ -123,7 +127,10 @@ export async function createNativeUploadGrant(
       ? timeout
       : AbortSignal.any([request.signal, timeout]);
   const body = {
-    attemptId: request.authority.lease.attemptId,
+    attemptId:
+      request.authority instanceof AcquiredNativeV2Lease
+        ? request.authority.recipe.attemptId
+        : request.authority.lease.attemptId,
     expectedRunRevision: declaration.expectedRunRevision,
     slot: declaration.slot,
     size: declaration.size,
@@ -139,9 +146,14 @@ export async function createNativeUploadGrant(
 
   let response: Response;
   try {
+    const v2 = request.authority instanceof AcquiredNativeV2Lease;
+    const leaseId =
+      request.authority instanceof AcquiredNativeV2Lease
+        ? request.authority.recipe.leaseId
+        : request.authority.lease.leaseId;
     response = await send(
       new URL(
-        `/native-worker/v1/leases/${request.authority.lease.leaseId}/upload-grants`,
+        `/native-worker/v${v2 ? '2' : '1'}/leases/${leaseId}/upload-grants`,
         origin,
       ),
       {
@@ -184,9 +196,11 @@ function uploadDeclaration(request: UploadGrantRequest): UploadDeclaration {
     'mediaType',
     mediaTypePattern,
   );
-  const plan = request.authority.lease.artifactPlan.find(
-    (item) => item.slot === slot,
-  );
+  const lease =
+    request.authority instanceof AcquiredNativeV2Lease
+      ? request.authority.recipe
+      : request.authority.lease;
+  const plan = lease.artifactPlan.find((item) => item.slot === slot);
   if (plan?.mediaType !== mediaType || size > plan.maximumBytes) {
     throw new Error('Upload declaration does not match the artifact plan');
   }
@@ -203,7 +217,7 @@ function uploadDeclaration(request: UploadGrantRequest): UploadDeclaration {
 
 function parseUploadGrant(
   text: string,
-  authority: AcquiredNativeLease,
+  authority: AcquiredNativeLease | AcquiredNativeV2Lease,
   declaration: UploadDeclaration,
 ): AcquiredNativeUploadGrant {
   let decoded: unknown;
@@ -228,7 +242,8 @@ function parseUploadGrant(
     'sha256',
   ]);
   const headers = uploadHeaders(source.uploadHeaders, declaration);
-  const lease = authority.lease;
+  const v2 = authority instanceof AcquiredNativeV2Lease;
+  const lease = v2 ? authority.recipe : authority.lease;
   const grant: NativeUploadGrantDetails = {
     grantId: leaseUuid(source.grantId, 'grantId'),
     leaseId: leaseUuid(source.leaseId, 'leaseId'),
@@ -270,11 +285,11 @@ function parseUploadGrant(
   }
   const url = presignedUploadUrl(source.uploadUrl, expectedKey);
 
-  return new AcquiredNativeUploadGrant(grant, {
-    url,
-    method: 'PUT',
-    headers,
-  });
+  return new AcquiredNativeUploadGrant(
+    grant,
+    { url, method: 'PUT', headers },
+    v2 ? 2 : 1,
+  );
 }
 
 function uploadHeaders(
