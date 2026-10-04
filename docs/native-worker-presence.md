@@ -138,9 +138,11 @@ Renewal and release accept either v1 or v2 acquired authority. The authority sel
 versioned endpoint; the attempt ID, expected Run revision and opaque lease capability remain bound
 to that same authority. V2 renewal validates the returned lease and attempt fence and cancellation
 deadline; v2 release accepts only a `204` acknowledgement. Neither operation is called by the CLI.
-Upload-grant, artifact-registration and terminal transports remain v1-only until their v2
-boundaries are reviewed. The server must not issue v2 work merely because these two lifecycle
-transports exist.
+Upload-grant and artifact-registration transports now accept v1 or v2 authority and use the
+corresponding versioned endpoints. A grant carries its acquisition generation outside its JSON
+body; registration refuses a grant from the other generation before any network call. The
+terminal transport and raw-result publication remain v1-only. The server must not issue v2 work
+until the complete worker execution and terminal lifecycle is reviewed.
 
 The current plan requires `playwright-measurements/v2` for the `measurements` slot and
 `raw-result/v2` for the `manifest` slot. Acquisition rejects the obsolete hyphenated placeholders
