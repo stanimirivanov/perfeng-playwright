@@ -8,7 +8,9 @@ import type { PlaywrightMeasurements } from '../src/journey/types.js';
 
 const capability = 'example-not-a-real-lease-capability-0001';
 
-export async function nativeRawResultRequest(): Promise<NativeRawResultRequest> {
+export async function nativeRawResultRequest(): Promise<
+  NativeRawResultRequest & { authority: AcquiredNativeLease }
+> {
   const authority = new AcquiredNativeLease(
     parseNativeLease(
       await readFile(

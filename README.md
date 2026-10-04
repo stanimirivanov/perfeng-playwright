@@ -88,9 +88,11 @@ any lease transport. The worker
 requires HTTPS, refuses redirects, bounds response bytes, and never reads a
 credential from JSON or a command-line argument. Its raw-result path constructs
 deterministic `raw-result/v2` bytes from matching measurements, immutable
-execution provenance, and lease-fenced registered evidence, persists them
-exclusively, and publishes the manifest through the existing grant, transfer,
-and registration boundary. It does not advance the Run.
+execution provenance, and lease-fenced registered evidence for either lease
+generation. It persists the manifest exclusively and publishes it through the
+generation-matched grant, transfer, and registration boundary. V2 manifests
+identify the reviewed 0.18.0 contracts bundle; v1 manifests retain 0.17.0.
+The CLI still does not execute work or advance the Run.
 
 ## Semantic measurements
 

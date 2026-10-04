@@ -18,7 +18,7 @@ const runIdPattern = /^perf-[0-9]{8}-[0-9]{6}-[a-f0-9]{8}$/;
 const revisionPattern = /^[a-f0-9]{40}$/;
 const lockfilePattern = /^[A-Za-z0-9._/-]+$/;
 const semanticVersionPattern =
-  /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$/;
+  /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
 const workloadProfiles = new Set<WorkloadProfile>([
   'smoke',
   'average',

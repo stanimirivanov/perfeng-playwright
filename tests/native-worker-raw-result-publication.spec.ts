@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
+import type { AcquiredNativeLease } from '../src/native-worker/acquisition.js';
 import type { NativeArtifactPublicationTransport } from '../src/native-worker/artifact-publication.js';
 import {
   publishNativeRawResultManifest,
@@ -12,6 +13,10 @@ import {
 } from '../src/native-worker/raw-result-publication.js';
 import { serializeNativeRawResultManifest } from '../src/native-worker/raw-result.js';
 import { nativeRawResultRequest } from './native-worker-raw-result-fixture.js';
+
+type V1PublicationRequest = NativeRawResultPublicationRequest & {
+  authority: AcquiredNativeLease;
+};
 
 async function withManifestPath<T>(
   operation: (path: string) => Promise<T>,
@@ -24,9 +29,7 @@ async function withManifestPath<T>(
   }
 }
 
-async function publicationRequest(
-  path: string,
-): Promise<NativeRawResultPublicationRequest> {
+async function publicationRequest(path: string): Promise<V1PublicationRequest> {
   return {
     ...(await nativeRawResultRequest()),
     controlPlaneOrigin: 'https://control-plane.perfeng.invalid',
@@ -37,7 +40,7 @@ async function publicationRequest(
 }
 
 async function successfulTransport(
-  request: NativeRawResultPublicationRequest,
+  request: V1PublicationRequest,
   bytes: Buffer,
   stages: string[],
 ): Promise<NativeArtifactPublicationTransport> {

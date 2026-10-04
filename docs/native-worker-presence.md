@@ -143,8 +143,14 @@ corresponding versioned endpoints. A grant carries its acquisition generation ou
 body; registration refuses a grant from the other generation before any network call. The
 terminal transport also accepts v1 or v2 authority, posts to the corresponding endpoint and
 checks the acknowledgement against the acquired attempt and expected Run revision. Raw-result
-construction and manifest publication remain v1-only. The server must not issue v2 work until
-the complete worker execution and terminal lifecycle is reviewed.
+construction and manifest publication also accept v2 authority: the builder checks measurements
+against the complete v2 recipe and uses the reviewed 0.18.0 bundle identity; v1 keeps 0.17.0.
+The worker rejects prerelease workload and environment-profile versions before execution because
+the current measurement and raw-result schemas permit only `major.minor.patch` values.
+The control plane's Run policy and runtime contracts version must also accept 0.18.0 before v2
+issuance is enabled; a control plane still expecting 0.17.0 rejects the v2 manifest.
+The CLI still cannot execute work, and the server must not issue v2 work until the complete worker
+execution and terminal lifecycle is reviewed.
 
 The current plan requires `playwright-measurements/v2` for the `measurements` slot and
 `raw-result/v2` for the `manifest` slot. Acquisition rejects the obsolete hyphenated placeholders

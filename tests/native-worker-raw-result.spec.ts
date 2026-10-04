@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import type { AcquiredNativeLease } from '../src/native-worker/acquisition.js';
 import {
   createNativeRawResultManifest,
   serializeNativeRawResultManifest,
@@ -12,7 +13,7 @@ import type {
 import { nativeRawResultRequest } from './native-worker-raw-result-fixture.js';
 
 function measurementReference(
-  input: NativeRawResultRequest,
+  input: NativeRawResultRequest & { authority: AcquiredNativeLease },
 ): NativeArtifactReference {
   const reference = input.registeredArtifacts[0];
   if (reference === undefined) {
@@ -21,7 +22,9 @@ function measurementReference(
   return reference;
 }
 
-function manifestPlan(input: NativeRawResultRequest): NativeArtifactPlanItem {
+function manifestPlan(
+  input: NativeRawResultRequest & { authority: AcquiredNativeLease },
+): NativeArtifactPlanItem {
   const plan = input.authority.lease.artifactPlan.find(
     (item) => item.slot === 'manifest',
   );
