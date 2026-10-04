@@ -16,7 +16,7 @@
 | Module responsibility or import direction | [Architecture guide](development/architecture.md)                                                                                     | `make architecture-check`                                    |
 | Semantic timing, lifecycle, or public API | [Engineering standards](development/engineering-standards.md), [repository README](../README.md)                                      | TypeDoc, browser fixtures, package build                     |
 | Native Worker presence and protocol       | [Native worker presence](native-worker-presence.md)                                                                                   | Vendored contract lock and focused protocol tests            |
-| Native Worker v2 execution preparation    | [Native worker presence](native-worker-presence.md#current-boundary), [architecture](development/architecture.md#lifecycle-and-state) | Reviewed v2 fixture, recipe and attempt preparation tests    |
+| Native Worker v2 local lifecycle          | [Native worker presence](native-worker-presence.md#current-boundary), [architecture](development/architecture.md#lifecycle-and-state) | Reviewed v2 recipe, attempt and local artifact tests         |
 | Immutable artifact publication            | [ADR-0001](decisions/0001-publish-artifacts-with-receipt-last-commitment.md)                                                          | Filesystem collision and recovery tests on Linux and Windows |
 | Durable decisions                         | [ADR index](decisions/README.md)                                                                                                      | Architecture and affected consumer documentation             |
 
