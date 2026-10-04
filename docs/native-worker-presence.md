@@ -141,8 +141,10 @@ deadline; v2 release accepts only a `204` acknowledgement. Neither operation is 
 Upload-grant and artifact-registration transports now accept v1 or v2 authority and use the
 corresponding versioned endpoints. A grant carries its acquisition generation outside its JSON
 body; registration refuses a grant from the other generation before any network call. The
-terminal transport and raw-result publication remain v1-only. The server must not issue v2 work
-until the complete worker execution and terminal lifecycle is reviewed.
+terminal transport also accepts v1 or v2 authority, posts to the corresponding endpoint and
+checks the acknowledgement against the acquired attempt and expected Run revision. Raw-result
+construction and manifest publication remain v1-only. The server must not issue v2 work until
+the complete worker execution and terminal lifecycle is reviewed.
 
 The current plan requires `playwright-measurements/v2` for the `measurements` slot and
 `raw-result/v2` for the `manifest` slot. Acquisition rejects the obsolete hyphenated placeholders

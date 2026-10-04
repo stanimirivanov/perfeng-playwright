@@ -78,11 +78,11 @@ Configuration and exact operating instructions are in the
 [native worker presence guide](docs/native-worker-presence.md). The client pins
 perfeng-contracts bundle 0.17.0 at revision
 `be847a4c7c0ad22c799389410a8c234d5492abc3` for v1. A separate reviewed
-bundle 0.18.0 pin supplies v2 presence, lease and artifact-publication fixtures. Configuration version 2
+bundle 0.18.0 pin supplies v2 presence, lease, artifact-publication and terminal fixtures. Configuration version 2
 reports baseline Chromium presence to `/native-worker/v2/presence`; it still reports
 `UNAVAILABLE`, never acquires work, and does not run a lease yet. A separate
 v2 acquisition transport can validate a server-issued lease against current
-qualification evidence. Renewal, release, upload-grant and artifact-registration
+qualification evidence. Renewal, release, upload-grant, artifact-registration and terminal-reporting
 transports route v2 authority to matching v2 endpoints, but the CLI does not call
 any lease transport. The worker
 requires HTTPS, refuses redirects, bounds response bytes, and never reads a

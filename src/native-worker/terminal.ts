@@ -6,6 +6,7 @@ import {
   requiredString,
 } from '../configuration/primitives.js';
 import type { AcquiredNativeLease } from './acquisition.js';
+import { AcquiredNativeV2Lease } from './acquisition-v2.js';
 import { normalizeControlPlaneOrigin } from './configuration.js';
 import { enumMember, leaseUuid } from './contract-values.js';
 import {
@@ -57,7 +58,7 @@ export class TerminalReportFailure extends Error {
 interface TerminalReportRequestBase {
   controlPlaneOrigin: string;
   token: string;
-  authority: AcquiredNativeLease;
+  authority: AcquiredNativeLease | AcquiredNativeV2Lease;
   expectedRunRevision: number;
   signal?: AbortSignal;
 }
@@ -97,12 +98,17 @@ export async function reportNativeTerminal(
     'content-type': 'application/json',
     'x-perfeng-lease': capability,
   }));
+  const v2 = request.authority instanceof AcquiredNativeV2Lease;
+  const lease =
+    request.authority instanceof AcquiredNativeV2Lease
+      ? request.authority.recipe
+      : request.authority.lease;
 
   let response: Response;
   try {
     response = await send(
       new URL(
-        `/native-worker/v1/leases/${request.authority.lease.leaseId}/terminal`,
+        `/native-worker/v${v2 ? '2' : '1'}/leases/${lease.leaseId}/terminal`,
         origin,
       ),
       {
@@ -139,7 +145,10 @@ function terminalRequestBody(
     'expectedRunRevision',
     1,
   );
-  const attemptId = request.authority.lease.attemptId;
+  const attemptId =
+    request.authority instanceof AcquiredNativeV2Lease
+      ? request.authority.recipe.attemptId
+      : request.authority.lease.attemptId;
   if (request.kind === 'COMPLETED') {
     const manifestArtifactId = validateManifestReference(
       request.authority,
@@ -167,11 +176,14 @@ function terminalRequestBody(
 }
 
 function validateManifestReference(
-  authority: AcquiredNativeLease,
+  authority: AcquiredNativeLease | AcquiredNativeV2Lease,
   reference: NativeArtifactReference,
 ): string {
   const artifactId = leaseUuid(reference.artifactId, 'manifest.artifactId');
-  const lease = authority.lease;
+  const lease =
+    authority instanceof AcquiredNativeV2Lease
+      ? authority.recipe
+      : authority.lease;
   const plan = lease.artifactPlan.find((item) => item.slot === reference.slot);
   if (
     reference.runId !== lease.runId ||
@@ -217,7 +229,7 @@ function terminalFailureMessage(value: unknown): string {
 
 function parseTerminalAcknowledgement(
   text: string,
-  authority: AcquiredNativeLease,
+  authority: AcquiredNativeLease | AcquiredNativeV2Lease,
   expectedRunRevision: number,
 ): NativeTerminalAcknowledgement {
   let decoded: unknown;
@@ -243,8 +255,12 @@ function parseTerminalAcknowledgement(
       terminalDispositions,
     ),
   };
+  const attemptId =
+    authority instanceof AcquiredNativeV2Lease
+      ? authority.recipe.attemptId
+      : authority.lease.attemptId;
   if (
-    acknowledgement.attemptId !== authority.lease.attemptId ||
+    acknowledgement.attemptId !== attemptId ||
     acknowledgement.runRevision < expectedRunRevision
   ) {
     throw new Error(
