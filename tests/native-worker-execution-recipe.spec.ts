@@ -128,6 +128,8 @@ test('rejects incomplete, incompatible and worker-selected recipes before execut
     [['assignment', 'recipe', 'browserSettings', 'deviceScaleFactor'], 5],
     [['assignment', 'recipe', 'browserSettings', 'viewport', 'width'], 0],
     [['assignment', 'target', 'baseUrl'], 'https://user@sut.perfeng.invalid'],
+    [['assignment', 'recipe', 'workloadVersion'], '1.0.0-beta'],
+    [['assignment', 'recipe', 'environment', 'profileVersion'], '1.0.0-beta'],
   ] as const) {
     expect(() =>
       parseNativeExecutionRecipe(
