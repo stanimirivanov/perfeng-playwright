@@ -16,6 +16,8 @@
   the presence-only worker runnable.
 - A supervised runner subprocess boundary is available, but the CLI does not invoke it and does
   not advertise availability.
+- V2 attempt preparation can create exclusive local inputs and output destinations from an acquired
+  lease; it does not launch the runner or make the worker available.
 - Treat `authorizedToAcquire` as server policy, not proof that this heartbeat-only process is ready
   to accept work.
 
@@ -229,3 +231,16 @@ configuration; those remain lifecycle-coordinator responsibilities. In particula
 keep its browser descendants owned until its own exit. This boundary has process-level tests on the
 development host, but still needs representative Windows/Chromium verification before the worker
 reports `AVAILABLE` or acquires a lease.
+
+V2 attempt preparation verifies the current clean source checkout against the assigned runner
+revision and lock before creating state. It requires an existing, operator-owned, non-symlink spool
+root; the operator must locate that root outside the source checkout. Preparation then creates one
+exclusive directory named from the Run and attempt IDs. The directory contains a lease-derived
+baseline configuration. Its fixed measurement, receipt and manifest paths do not exist until later
+steps publish them. The returned command
+arguments are for the runner CLI after a separately reviewed Node executable and entry point have
+been selected. Neither worker credentials nor the opaque lease capability are written to the
+configuration. An existing attempt directory is never reused, replaced or removed automatically.
+If preparation fails after directory creation, retain that directory for inspection; restart
+recovery and cleanup policy belong to the lifecycle coordinator. Windows directory mode bits are
+not an access-control policy, so the operator must provision a spool root with suitable ACLs.
