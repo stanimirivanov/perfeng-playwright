@@ -14,6 +14,8 @@
   not invoke it; the v2 server acquisition and execution lifecycle remain separate work.
 - V2 renewal and release can preserve or relinquish an acquired v2 attempt, but they do not make
   the presence-only worker runnable.
+- A supervised runner subprocess boundary is available, but the CLI does not invoke it and does
+  not advertise availability.
 - Treat `authorizedToAcquire` as server policy, not proof that this heartbeat-only process is ready
   to accept work.
 
@@ -216,3 +218,14 @@ terminal report.
 The CLI does not call these lease transports yet. Acquiring work before process-tree cancellation,
 execution preparation, and lifecycle coordination are composed could still abandon authority or
 misrepresent execution, and would contradict the worker's `UNAVAILABLE` presence.
+
+The runner subprocess adapter now accepts a caller-reviewed executable, arguments, working directory,
+explicit environment, cancellation signal and bounded timeout. It does not use a shell or inherit
+output streams. Cancellation and timeout stop the owned process tree and wait for the direct child to
+close before returning. On Windows this uses `taskkill /T /F`; on POSIX it signals the dedicated
+process group. A failed tree-stop operation is reported as a termination failure, not as a completed
+cancellation. The adapter does not validate the selected runner revision or prepare per-attempt
+configuration; those remain lifecycle-coordinator responsibilities. In particular, the runner must
+keep its browser descendants owned until its own exit. This boundary has process-level tests on the
+development host, but still needs representative Windows/Chromium verification before the worker
+reports `AVAILABLE` or acquires a lease.
