@@ -13,6 +13,8 @@
   boundaries are available for composition and tests; the CLI does not acquire or execute leases.
 - A single lifecycle coordinator must own authority loss, publication and terminal reporting before
   the worker can advertise availability.
+- `spool-status` inventories retained local attempt names without interpreting or modifying evidence;
+  it does not recover a lease.
 
 The presence command is the first executable slice of the outbound native Windows agent selected
 by the Native Worker API architecture decision. It reports bounded capabilities and immutable
@@ -293,3 +295,14 @@ uses the latest accepted revision and an independent bounded request signal. Los
 uncertain renewal and failed process termination never claim release. Restart recovery and the
 acquisition loop remain unfinished, so the CLI still reports `UNAVAILABLE`; see
 [ADR-0006](decisions/0006-release-stopped-native-attempts-within-proven-authority.md).
+
+## Inspect retained attempt state
+
+An operator can inspect retained local state with
+`perfeng-playwright-worker spool-status --spool-root ABSOLUTE_DIRECTORY`. The JSON result lists
+attempt-shaped directories and their immediate filenames, plus unexpected root entries. It reads
+no evidence bytes and needs no worker token. `hasRetainedState` means operator review is needed;
+it does not mean the files are valid or the lease can be resumed. The command neither deletes
+state nor contacts the control plane. A concurrent worker can change the spool after inspection,
+so this is not an acquisition lock. See
+[ADR-0007](decisions/0007-inspect-retained-native-attempts-without-resuming.md).

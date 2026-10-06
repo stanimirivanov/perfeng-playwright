@@ -11,6 +11,10 @@ import {
 import { readWorkerPresenceConfiguration } from './native-worker/configuration.js';
 import { runPresenceHeartbeat } from './native-worker/heartbeat.js';
 import { createWorkerPresence } from './native-worker/presence.js';
+import {
+  inspectNativeAttemptSpool,
+  type NativeSpoolInspection,
+} from './native-worker/spool-inspection.js';
 import type {
   WorkerPresence,
   WorkerPresenceConfiguration,
@@ -19,16 +23,24 @@ import type {
 
 const credentialVariable = 'PERFENG_NATIVE_WORKER_TOKEN';
 const usage =
-  'Usage: perfeng-playwright-worker <presence|heartbeat> --config FILE';
+  'Usage: perfeng-playwright-worker <presence|heartbeat> --config FILE | spool-status --spool-root DIRECTORY';
 
 /** Parsed action and configuration path accepted by the Native Worker executable. */
-export interface WorkerCommand {
-  action: 'presence' | 'heartbeat';
-  configurationPath: string;
-}
+export type WorkerCommand =
+  | { action: 'presence' | 'heartbeat'; configurationPath: string }
+  | { action: 'spool-status'; spoolRoot: string };
 
-/** Parses the Native Worker executable's presence or heartbeat invocation. */
+/** Parses the Native Worker executable's presence, heartbeat or local spool inspection. */
 export function parseWorkerCommand(args: string[]): WorkerCommand {
+  if (
+    args.length === 3 &&
+    args[0] === 'spool-status' &&
+    args[1] === '--spool-root' &&
+    args[2] !== undefined &&
+    args[2] !== ''
+  ) {
+    return { action: 'spool-status', spoolRoot: args[2] };
+  }
   if (
     args.length !== 3 ||
     (args[0] !== 'presence' && args[0] !== 'heartbeat') ||
@@ -42,13 +54,16 @@ export function parseWorkerCommand(args: string[]): WorkerCommand {
   return { action: args[0], configurationPath: args[2] };
 }
 
-/** Reports one presence document or runs a cancellable, server-paced heartbeat. */
+/** Reports presence, runs its heartbeat or inventories local retained attempt paths. */
 export async function workerMain(
   args: string[],
   environment: NodeJS.ProcessEnv = process.env,
   signal: AbortSignal = new AbortController().signal,
-): Promise<WorkerPresenceStatus | undefined> {
+): Promise<WorkerPresenceStatus | NativeSpoolInspection | undefined> {
   const command = parseWorkerCommand(args);
+  if (command.action === 'spool-status') {
+    return inspectNativeAttemptSpool(command.spoolRoot);
+  }
   const token = environment[credentialVariable];
   if (token === undefined || token === '') {
     throw new Error(`${credentialVariable} is required`);

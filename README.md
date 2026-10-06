@@ -75,8 +75,9 @@ server qualification wiring without claiming that the still-unimplemented lease
 execution loop can accept work.
 
 Configuration and exact operating instructions are in the
-[native worker presence guide](docs/native-worker-presence.md). The client pins
-perfeng-contracts bundle 0.17.0 at revision
+[native worker presence guide](docs/native-worker-presence.md). The worker also provides a
+token-free, read-only `spool-status` command for operator inspection of retained attempt paths;
+it does not recover a lease. The client pins perfeng-contracts bundle 0.17.0 at revision
 `be847a4c7c0ad22c799389410a8c234d5492abc3` for v1. A separate reviewed
 bundle 0.18.0 pin supplies v2 presence, lease, artifact-publication and terminal fixtures. Configuration version 2
 reports baseline Chromium presence to `/native-worker/v2/presence`; it still reports

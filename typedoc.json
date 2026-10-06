@@ -8,6 +8,7 @@
     "DurationSummary",
     "JavaScriptHeapObservation",
     "NavigationObservation",
+    "NativeSpoolInspection",
     "ResourceSummary",
     "WorkerPresenceStatus"
   ],
