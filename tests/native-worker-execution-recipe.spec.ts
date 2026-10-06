@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 
 import {
+  maximumNativeMeasurementDocumentBytes,
   parseNativeExecutionRecipe,
   type NativeWorkerQualificationEvidence,
 } from '../src/native-worker/execution-recipe.js';
@@ -194,6 +195,16 @@ test('rejects v1 leases and noncanonical baseline artifact plans', async () => {
       evidence,
     ),
   ).toThrow();
+  expect(() =>
+    parseNativeExecutionRecipe(
+      withValue(
+        leaseText,
+        ['artifactPlan', '0', 'maximumBytes'],
+        maximumNativeMeasurementDocumentBytes + 1,
+      ),
+      evidence,
+    ),
+  ).toThrow('maximumBytes');
 });
 
 test('pins byte-identical v2 acquisition fixtures and reviewed OpenAPI identity', async () => {

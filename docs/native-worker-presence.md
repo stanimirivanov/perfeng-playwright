@@ -250,7 +250,10 @@ the runner's committed receipt. It verifies the receipt's Run, test and source-c
 against the v2 lease, rejects diagnostic slots, and streams the measurement file to check its size
 and SHA-256 against both the receipt and the lease's artifact-plan maximum. Missing, symlinked,
 oversized, changing or mismatched files fail without deleting local evidence or contacting the
-control plane. The receipt has a 64 KiB local bound. This step does not parse measurement semantics
-or prove that an untrusted local writer told the truth; a later lifecycle step must validate the
-payload against the recipe before publication, and the server remains the authority for registered
-evidence.
+control plane. The receipt has a 64 KiB local bound. The separate semantic loader rereads those
+committed bytes, compares their size and digest, then validates the complete baseline payload,
+iteration metric sets, recipe identity, runner version and lease timeline before returning upload
+inputs. The worker rejects measurement plans above the 32 MiB local parser bound before execution;
+see [ADR-0003](decisions/0003-bound-native-measurement-parsing.md). Neither check proves that an
+untrusted local writer told the truth. Publication still belongs to a later lifecycle coordinator,
+and the server remains the authority for registered evidence.

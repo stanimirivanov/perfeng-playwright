@@ -85,3 +85,5 @@ How will assumptions and consequences be verified?
   — Accepted
 - [ADR-0002: Select Native Worker presence generation explicitly](0002-select-native-worker-presence-generation-explicitly.md)
   — Accepted
+- [ADR-0003: Bound Native Worker measurement parsing](0003-bound-native-measurement-parsing.md)
+  — Proposed
