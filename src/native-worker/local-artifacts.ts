@@ -3,9 +3,12 @@ import { basename, join } from 'node:path';
 
 import { exactKeys, integer, record } from '../configuration/primitives.js';
 import { inspectRegularFile } from '../filesystem/inspect-regular-file.js';
+import type { PlaywrightMeasurements } from '../journey/types.js';
 import { AcquiredNativeV2Lease } from './acquisition-v2.js';
 import type { PreparedNativeAttempt } from './attempt-preparation.js';
 import { contractSha256, patternString } from './contract-values.js';
+import { maximumNativeMeasurementDocumentBytes } from './execution-recipe.js';
+import { parseNativeV2Measurements } from './measurement-document.js';
 
 const maximumReceiptBytes = 64 * 1024;
 const versionPattern = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
@@ -17,6 +20,48 @@ export interface VerifiedNativeMeasurements {
   mediaType: 'application/json';
 }
 
+/** Receipt-verified artifact declaration paired with its validated v2 payload. */
+export interface ParsedNativeAttemptArtifacts {
+  artifact: VerifiedNativeMeasurements;
+  measurements: PlaywrightMeasurements;
+}
+
+/** Loads a receipt-verified local payload and validates its v2 measurement meaning. */
+export async function loadNativeV2Measurements(
+  authority: AcquiredNativeV2Lease,
+  prepared: PreparedNativeAttempt,
+): Promise<ParsedNativeAttemptArtifacts> {
+  const { artifact, producerVersion } = await inspectNativeAttemptArtifacts(
+    authority,
+    prepared,
+  );
+  const inspected = await inspectRegularFile(
+    artifact.path,
+    Math.min(
+      authority.recipe.artifactPlan[0].maximumBytes,
+      maximumNativeMeasurementDocumentBytes,
+    ),
+    true,
+  );
+  if (
+    inspected.size !== artifact.size ||
+    inspected.sha256 !== artifact.sha256 ||
+    inspected.bytes === undefined
+  ) {
+    throw new Error('Native measurements changed before semantic validation');
+  }
+  const measurements = parseNativeV2Measurements(
+    inspected.bytes,
+    authority.recipe,
+  );
+  if (measurements.runtime.playwrightVersion !== producerVersion) {
+    throw new Error(
+      'Native measurement version differs from the runner receipt',
+    );
+  }
+  return { artifact, measurements };
+}
+
 /**
  * Checks the runner's receipt and exact measurement bytes before remote use.
  * The receipt commits only the baseline measurements slot. This does not parse
@@ -26,6 +71,13 @@ export async function verifyNativeAttemptArtifacts(
   authority: AcquiredNativeV2Lease,
   prepared: PreparedNativeAttempt,
 ): Promise<VerifiedNativeMeasurements> {
+  return (await inspectNativeAttemptArtifacts(authority, prepared)).artifact;
+}
+
+async function inspectNativeAttemptArtifacts(
+  authority: AcquiredNativeV2Lease,
+  prepared: PreparedNativeAttempt,
+): Promise<{ artifact: VerifiedNativeMeasurements; producerVersion: string }> {
   if (!(authority instanceof AcquiredNativeV2Lease)) {
     throw new Error('Native artifact verification requires v2 authority');
   }
@@ -59,10 +111,13 @@ export async function verifyNativeAttemptArtifacts(
     throw new Error('Native measurements differ from the runner receipt');
   }
   return {
-    path: prepared.measurementsPath,
-    size: measured.size,
-    sha256: measured.sha256,
-    mediaType: 'application/json',
+    artifact: {
+      path: prepared.measurementsPath,
+      size: measured.size,
+      sha256: measured.sha256,
+      mediaType: 'application/json',
+    },
+    producerVersion: receipt.producerVersion,
   };
 }
 
@@ -88,7 +143,7 @@ function parseReceipt(
   bytes: Buffer | undefined,
   authority: AcquiredNativeV2Lease,
   maximumBytes: number,
-): { size: number; sha256: string } {
+): { size: number; sha256: string; producerVersion: string } {
   if (bytes === undefined) {
     throw new Error('Native runner receipt bytes are missing');
   }
@@ -144,7 +199,7 @@ function parseReceipt(
   ) {
     throw new Error('Native runner receipt differs from the lease');
   }
-  patternString(
+  const producerVersion = patternString(
     producer.version,
     'native runner producer version',
     versionPattern,
@@ -159,6 +214,7 @@ function parseReceipt(
   }
   return {
     size,
+    producerVersion,
     sha256: contractSha256(
       measurements.sha256,
       'native runner measurement SHA-256',

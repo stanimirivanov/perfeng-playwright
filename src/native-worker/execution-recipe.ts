@@ -28,6 +28,8 @@ const workloadProfiles = new Set<WorkloadProfile>([
   'soak',
 ]);
 const maximumLeaseBytes = 64 * 1024;
+/** Local in-memory JSON ceiling; narrower than the v2 artifact contract maximum. */
+export const maximumNativeMeasurementDocumentBytes = 32 * 1024 * 1024;
 
 /** Current, locally refreshed evidence used to verify a v2 assignment. */
 export interface NativeWorkerQualificationEvidence {
@@ -406,7 +408,9 @@ function baselineSlot(
       source.maximumBytes,
       'maximumBytes',
       1,
-      512 * 1024 * 1024,
+      slot === 'measurements'
+        ? maximumNativeMeasurementDocumentBytes
+        : 512 * 1024 * 1024,
     ),
     required: true,
   };
