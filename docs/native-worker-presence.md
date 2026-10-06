@@ -185,9 +185,16 @@ ordering decision owned by the later lifecycle coordinator.
 The artifact-publication operation composes the three authority boundaries in their required
 order: acquire a grant, transfer the exact local file, then register the verified reference. It
 returns only the immutable reference and never exposes or retains upload authorization. It does not
-retry implicitly. If transfer succeeds but registration fails, the object remains non-authoritative
-and attempt-scoped; a lifecycle coordinator may retry the same declaration while its lease remains
-current. The worker receives no permission to inspect or delete that object.
+retry grant acquisition or object transfer implicitly. Under v2 authority, a retryably uncertain
+registration response without `Retry-After` triggers one immediate retry of the exact grant and
+revision-fenced registration request; it never repeats the object `PUT`. A conflict, lost authority,
+cancellation, server-paced response or second failure remains unresolved for explicit recovery.
+Under v1 authority, registration is sent once. If transfer succeeds but registration remains
+unresolved, the object stays non-authoritative and attempt-scoped. A lease renewal between v2
+registration attempts may cause the server to reject the frozen revision, so an unresolved outcome
+must not be treated as proof that the first registration failed. The worker receives no permission
+to inspect or delete that object; see
+[ADR-0009](decisions/0009-retry-exact-native-artifact-registration-once.md).
 
 The raw-result builder constructs deterministic `raw-result/v2` bytes only after every required
 non-manifest artifact has a lease-fenced registered reference. It derives Run, test, workload,
