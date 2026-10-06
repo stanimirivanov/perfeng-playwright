@@ -166,7 +166,14 @@ does not make that claim itself.
 Upload-grant acquisition verifies the declared bytes against the assigned slot and validates the
 server-selected object key, attempt fence, size ceiling, checksum, lease-bounded expiry and exact
 signed headers. Its presigned URL query and header values are bearer material. They remain behind
-an explicit callback and are omitted from JSON, string and diagnostic inspection.
+an explicit callback and are omitted from JSON, string and diagnostic inspection. Under v2
+authority, a retryably uncertain grant response without `Retry-After` triggers one immediate
+replay of the same revision-fenced declaration before any transfer. The control plane may return
+fresh signed delivery material for the same reservation; the worker uses only the accepted grant.
+Conflict, lost authority, cancellation, server pacing or a second failure stops publication
+without sending object bytes. V1 grants remain single-shot. A concurrent lease renewal can make
+the frozen revision stale; an unresolved grant does not prove no reservation was created. See
+[ADR-0010](decisions/0010-retry-exact-native-upload-grant-once.md).
 
 The separate artifact-transfer step opens the declared local file as a file-backed Blob, verifies
 its size and SHA-256 before network access, and sends it through one bounded presigned `PUT`. Node
@@ -184,8 +191,8 @@ ordering decision owned by the later lifecycle coordinator.
 
 The artifact-publication operation composes the three authority boundaries in their required
 order: acquire a grant, transfer the exact local file, then register the verified reference. It
-returns only the immutable reference and never exposes or retains upload authorization. It does not
-retry grant acquisition or object transfer implicitly. Under v2 authority, a retryably uncertain
+returns only the immutable reference and never exposes or retains upload authorization. It never
+retries object transfer implicitly. Under v2 authority, a retryably uncertain
 registration response without `Retry-After` triggers one immediate retry of the exact grant and
 revision-fenced registration request; it never repeats the object `PUT`. A conflict, lost authority,
 cancellation, server-paced response or second failure remains unresolved for explicit recovery.

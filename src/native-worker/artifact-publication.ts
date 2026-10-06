@@ -7,7 +7,12 @@ import {
 } from './artifact-registration.js';
 import { uploadNativeArtifact } from './artifact-upload.js';
 import type { NativeArtifactReference } from './types.js';
-import { createNativeUploadGrant } from './upload-grant.js';
+import {
+  createNativeUploadGrant,
+  UploadGrantFailure,
+  type AcquiredNativeUploadGrant,
+  type UploadGrantRequest,
+} from './upload-grant.js';
 
 export interface NativeArtifactPublicationRequest {
   controlPlaneOrigin: string;
@@ -45,20 +50,24 @@ export async function publishNativeArtifact(
 ): Promise<NativeArtifactReference> {
   const cancellation =
     request.signal === undefined ? {} : { signal: request.signal };
-  const grant = await createNativeUploadGrant(
-    {
-      controlPlaneOrigin: request.controlPlaneOrigin,
-      token: request.token,
-      authority: request.authority,
-      expectedRunRevision: currentNativeRevision(request.expectedRunRevision),
-      slot: request.slot,
-      size: request.size,
-      sha256: request.sha256,
-      mediaType: request.mediaType,
-      ...cancellation,
-    },
-    transport.controlPlane,
-  );
+  const grantRequest: UploadGrantRequest = {
+    controlPlaneOrigin: request.controlPlaneOrigin,
+    token: request.token,
+    authority: request.authority,
+    expectedRunRevision: currentNativeRevision(request.expectedRunRevision),
+    slot: request.slot,
+    size: request.size,
+    sha256: request.sha256,
+    mediaType: request.mediaType,
+    ...cancellation,
+  };
+  const grant =
+    request.authority instanceof AcquiredNativeV2Lease
+      ? await createNativeV2UploadGrantWithExactRetry(
+          grantRequest,
+          transport.controlPlane,
+        )
+      : await createNativeUploadGrant(grantRequest, transport.controlPlane);
 
   await uploadNativeArtifact(
     {
@@ -89,6 +98,31 @@ export async function publishNativeArtifact(
     registration,
     transport.controlPlane,
   );
+}
+
+/** Repeats an uncertain v2 grant reservation without changing its declaration. */
+async function createNativeV2UploadGrantWithExactRetry(
+  request: UploadGrantRequest,
+  send: typeof fetch,
+): Promise<AcquiredNativeUploadGrant> {
+  try {
+    return await createNativeUploadGrant(request, send);
+  } catch (error) {
+    if (
+      !(error instanceof UploadGrantFailure) ||
+      error.kind !== 'retryable' ||
+      error.retryAfterSeconds !== undefined
+    ) {
+      throw error;
+    }
+    if (request.signal?.aborted) {
+      throw new UploadGrantFailure(
+        'Native upload grant request was cancelled',
+        'cancelled',
+      );
+    }
+  }
+  return createNativeUploadGrant(request, send);
 }
 
 /** Repeats only the registration claim, never the completed object transfer. */

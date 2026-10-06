@@ -14,6 +14,7 @@ import {
 } from '../src/native-worker/artifact-publication.js';
 import { NativeArtifactUploadFailure } from '../src/native-worker/artifact-upload.js';
 import { parseNativeLease } from '../src/native-worker/lease.js';
+import { UploadGrantFailure } from '../src/native-worker/upload-grant.js';
 
 const controlPlaneOrigin = 'https://control-plane.perfeng.invalid';
 const token = 'worker-secret';
@@ -154,6 +155,27 @@ test('publishes one artifact through grant, transfer, and registration in order'
       registeredAt: '2026-09-18T12:01:15Z',
     });
     expect(stages).toEqual(['grant', 'upload', 'register']);
+  });
+});
+
+test('keeps v1 grant requests single-shot after an uncertain response', async () => {
+  const content = Buffer.from('{"value":"v1-grant"}\n');
+  await withArtifact(content, async (path) => {
+    const stages: string[] = [];
+    const request = await publicationRequest(path, content);
+    const transport = await successfulTransport(request, stages);
+    transport.controlPlane = () => {
+      stages.push('grant');
+      return Promise.reject(new Error('sensitive transport failure'));
+    };
+
+    const failure = await publishNativeArtifact(request, transport).then(
+      () => undefined,
+      (reason: unknown) => reason,
+    );
+    expect(failure).toBeInstanceOf(UploadGrantFailure);
+    expect(failure).toMatchObject({ kind: 'retryable' });
+    expect(stages).toEqual(['grant']);
   });
 });
 
