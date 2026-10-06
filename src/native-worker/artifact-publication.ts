@@ -9,13 +9,20 @@ export interface NativeArtifactPublicationRequest {
   controlPlaneOrigin: string;
   token: string;
   authority: AcquiredNativeLease | AcquiredNativeV2Lease;
-  expectedRunRevision: number;
+  expectedRunRevision: NativeRevisionSource;
   slot: string;
   path: string;
   size: number;
   sha256: string;
   mediaType: string;
   signal?: AbortSignal;
+}
+
+/** A fixed revision or a live lease-supervisor revision read at each mutation. */
+export type NativeRevisionSource = number | (() => number);
+
+export function currentNativeRevision(source: NativeRevisionSource): number {
+  return typeof source === 'number' ? source : source();
 }
 
 export interface NativeArtifactPublicationTransport {
@@ -39,7 +46,7 @@ export async function publishNativeArtifact(
       controlPlaneOrigin: request.controlPlaneOrigin,
       token: request.token,
       authority: request.authority,
-      expectedRunRevision: request.expectedRunRevision,
+      expectedRunRevision: currentNativeRevision(request.expectedRunRevision),
       slot: request.slot,
       size: request.size,
       sha256: request.sha256,
@@ -67,7 +74,7 @@ export async function publishNativeArtifact(
       token: request.token,
       authority: request.authority,
       grant,
-      expectedRunRevision: request.expectedRunRevision,
+      expectedRunRevision: currentNativeRevision(request.expectedRunRevision),
       size: request.size,
       sha256: request.sha256,
       ...cancellation,

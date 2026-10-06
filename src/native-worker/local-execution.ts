@@ -27,6 +27,10 @@ export interface NativeLocalExecutionRequest {
   runnerEnvironment: NodeJS.ProcessEnv;
   signal: AbortSignal;
   timeoutMilliseconds: number;
+  /** Called after preparation, immediately before the runner is launched. */
+  onPrepared?: () => void;
+  /** Called after a successful runner exit, before artifact validation. */
+  onRunnerCompleted?: () => void;
 }
 
 export interface NativeLocalExecutionResult extends ParsedNativeAttemptArtifacts {
@@ -57,6 +61,7 @@ export async function executeNativeLocalAttempt(
     inspectCheckout,
   );
   assertNotCancelled(request.signal);
+  request.onPrepared?.();
   await runNativeRunnerProcess({
     executable: process.execPath,
     arguments: [entrypoint, ...prepared.runnerArguments],
@@ -66,6 +71,7 @@ export async function executeNativeLocalAttempt(
     timeoutMilliseconds: request.timeoutMilliseconds,
   });
   assertNotCancelled(request.signal);
+  request.onRunnerCompleted?.();
   const loaded = await loadNativeV2Measurements(request.authority, prepared);
   assertNotCancelled(request.signal);
   return { prepared, ...loaded };

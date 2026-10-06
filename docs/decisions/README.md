@@ -89,3 +89,5 @@ How will assumptions and consequences be verified?
   — Proposed
 - [ADR-0004: Fail closed on Native Worker lease-supervision failure](0004-fail-closed-native-lease-supervision.md)
   — Proposed
+- [ADR-0005: Report Native Worker terminal outcomes within lease supervision](0005-report-native-attempt-terminal-within-lease-supervision.md)
+  — Proposed

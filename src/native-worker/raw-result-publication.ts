@@ -4,6 +4,7 @@ import { publishImmutableFile } from '../filesystem/immutable-publication.js';
 import {
   publishNativeArtifact,
   type NativeArtifactPublicationTransport,
+  type NativeRevisionSource,
 } from './artifact-publication.js';
 import {
   serializeNativeRawResultManifest,
@@ -14,7 +15,7 @@ import type { NativeArtifactReference } from './types.js';
 export interface NativeRawResultPublicationRequest extends NativeRawResultRequest {
   controlPlaneOrigin: string;
   token: string;
-  expectedRunRevision: number;
+  expectedRunRevision: NativeRevisionSource;
   path: string;
   signal?: AbortSignal;
 }

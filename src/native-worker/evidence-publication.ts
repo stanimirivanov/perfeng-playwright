@@ -3,6 +3,7 @@ import { AcquiredNativeV2Lease } from './acquisition-v2.js';
 import {
   publishNativeArtifact,
   type NativeArtifactPublicationTransport,
+  type NativeRevisionSource,
 } from './artifact-publication.js';
 import { loadNativeV2Measurements } from './local-artifacts.js';
 import {
@@ -15,7 +16,7 @@ export interface NativeV2EvidencePublicationRequest {
   controlPlaneOrigin: string;
   token: string;
   authority: AcquiredNativeV2Lease;
-  expectedRunRevision: number;
+  expectedRunRevision: NativeRevisionSource;
   prepared: PreparedNativeAttempt;
   /** Preserve this value when retrying a locally committed manifest. */
   createdAt?: string;

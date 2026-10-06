@@ -98,9 +98,10 @@ validated configuration -> browser -> context -> page -> warm-up -> measurement 
 
 The Native Worker protocol already models presence, acquisition, renewal, artifact publication,
 terminal reporting and release as focused operations. The execution loop remains intentionally
-unfinished. An internal supervisor now maintains v2 lease authority and forward phases around one
-abort-aware operation, but it does not own acquisition, release or terminal reporting. The complete
-coordinator should use an explicit transition model:
+unfinished. An internal supervisor maintains v2 lease authority and forward phases around one
+abort-aware operation. The v2 attempt coordinator now composes local execution, publication and
+terminal reporting within that supervision boundary. Acquisition, release and restart recovery are
+still absent. The complete worker loop should use an explicit transition model:
 
 ```text
 unavailable -> qualified -> acquiring -> preparing -> running -> uploading -> finalizing -> terminal
@@ -108,7 +109,7 @@ unavailable -> qualified -> acquiring -> preparing -> running -> uploading -> fi
                                   +------------+----------+------------+-> release/failure
 ```
 
-Only the coordinator may advance execution phases. Lease authority and capability material remain
+Only the attempt coordinator may advance execution phases. Lease authority and capability material remain
 encapsulated, cancellation is checked at every boundary, and terminal or release outcomes end the
 attempt. Protocol modules must not grow independent background loops that compete for that state.
 
@@ -136,7 +137,7 @@ The current structure follows the selected architecture:
 
 Two constraints should guide the next implementation steps:
 
-- add one Native Worker lifecycle coordinator before enabling availability and lease execution;
+- complete Native Worker release, recovery and acquisition policy before enabling availability;
 - split `src/native-worker/types.ts` by protocol responsibility only when the coordinator makes
   ownership clearer, not merely to reduce file length.
 
