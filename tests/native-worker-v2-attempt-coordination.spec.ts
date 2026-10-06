@@ -13,7 +13,11 @@ import type { NativeV2SupervisionClock } from '../src/native-worker/lease-superv
 import { NativeRunnerProcessFailure } from '../src/native-worker/runner-process.js';
 import { LeaseRenewalFailure } from '../src/native-worker/renewal.js';
 import { TerminalReportFailure } from '../src/native-worker/terminal.js';
-import type { NativeLeaseRenewal } from '../src/native-worker/types.js';
+import type { TerminalReportRequest } from '../src/native-worker/terminal.js';
+import type {
+  NativeLeaseRenewal,
+  NativeTerminalAcknowledgement,
+} from '../src/native-worker/types.js';
 import { UploadGrantFailure } from '../src/native-worker/upload-grant.js';
 import { nativeV2RawResultRequest } from './native-worker-v2-raw-result-fixture.js';
 
@@ -128,8 +132,38 @@ function failingPorts(
   };
 }
 
+function workingPorts(
+  data: Awaited<ReturnType<typeof fixture>>,
+  report: NativeV2AttemptPorts['report'],
+): NativeV2AttemptPorts {
+  return {
+    renew: () => Promise.resolve(data.renewal),
+    execute: (value) => {
+      value.onPrepared?.();
+      value.onRunnerCompleted?.();
+      return Promise.resolve(data.local);
+    },
+    publish: () => Promise.resolve(data.evidence),
+    report,
+    release: unexpectedRelease,
+  };
+}
+
 function unexpectedRelease(): Promise<void> {
   return Promise.reject(new Error('Release must not run'));
+}
+
+function reportInOrder<T>(
+  responses: readonly (() => Promise<T>)[],
+): () => Promise<T> {
+  let next = 0;
+  return () => {
+    const response = responses[next++];
+    if (response === undefined) {
+      throw new Error('Unexpected terminal report call');
+    }
+    return response();
+  };
 }
 
 function gatedClock() {
@@ -266,6 +300,176 @@ test('publishes and reports with revisions accepted during the running and uploa
   );
   expect(result.kind).toBe('COMPLETED');
   expect(phases).toEqual(['PREPARING', 'RUNNING', 'UPLOADING']);
+});
+
+test('retries the identical completed claim after an uncertain response', async () => {
+  const data = await fixture();
+  const claims: TerminalReportRequest[] = [];
+  const respond = reportInOrder<NativeTerminalAcknowledgement>([
+    () =>
+      Promise.reject(new TerminalReportFailure('response lost', 'retryable')),
+    () =>
+      Promise.resolve({
+        attemptId: data.request.authority.recipe.attemptId,
+        runRevision: 6,
+        disposition: 'ALREADY_ACCEPTED',
+      }),
+  ]);
+  const result = await coordinateNativeV2Attempt(
+    data.request,
+    workingPorts(data, (claim) => {
+      claims.push(claim);
+      return respond();
+    }),
+    data.clock,
+  );
+
+  expect(result).toMatchObject({
+    kind: 'COMPLETED',
+    acknowledgement: { disposition: 'ALREADY_ACCEPTED' },
+  });
+  expect(claims).toHaveLength(2);
+  expect(claims[1]).toBe(claims[0]);
+  expect(claims[1]).toMatchObject({
+    kind: 'COMPLETED',
+    expectedRunRevision: 5,
+    manifest: data.evidence.manifest.reference,
+  });
+});
+
+test('retries the identical failed claim after an uncertain response', async () => {
+  const data = await fixture();
+  const claims: TerminalReportRequest[] = [];
+  const respond = reportInOrder<NativeTerminalAcknowledgement>([
+    () =>
+      Promise.reject(new TerminalReportFailure('response lost', 'retryable')),
+    () =>
+      Promise.resolve({
+        attemptId: data.request.authority.recipe.attemptId,
+        runRevision: 6,
+        disposition: 'ALREADY_ACCEPTED',
+      }),
+  ]);
+  const ports = failingPorts('running', data, []);
+  ports.report = (claim) => {
+    claims.push(claim);
+    return respond();
+  };
+  const result = await coordinateNativeV2Attempt(
+    data.request,
+    ports,
+    data.clock,
+  );
+
+  expect(result).toMatchObject({
+    kind: 'FAILED',
+    failure: { code: 'TOOL_FAILED' },
+    acknowledgement: { disposition: 'ALREADY_ACCEPTED' },
+  });
+  expect(claims).toHaveLength(2);
+  expect(claims[1]).toBe(claims[0]);
+  expect(claims[1]).toMatchObject({
+    kind: 'FAILED',
+    expectedRunRevision: 5,
+    failure: { code: 'TOOL_FAILED' },
+  });
+});
+
+test('does not override a server Retry-After with an immediate terminal retry', async () => {
+  const data = await fixture();
+  const deferred = new TerminalReportFailure('retry later', 'retryable', 5);
+  let reports = 0;
+  await expect(
+    coordinateNativeV2Attempt(
+      data.request,
+      workingPorts(data, () => {
+        reports++;
+        return Promise.reject(deferred);
+      }),
+      data.clock,
+    ),
+  ).rejects.toBe(deferred);
+  expect(reports).toBe(1);
+});
+
+test('does not retry a terminal claim after the attempt is cancelled', async () => {
+  const data = await fixture();
+  const shutdown = new AbortController();
+  let reports = 0;
+  let releases = 0;
+  const ports = workingPorts(data, () => {
+    reports++;
+    shutdown.abort();
+    return Promise.reject(
+      new TerminalReportFailure('response lost', 'retryable'),
+    );
+  });
+  ports.release = () => {
+    releases++;
+    return Promise.resolve();
+  };
+  await expect(
+    coordinateNativeV2Attempt(
+      { ...data.request, signal: shutdown.signal },
+      ports,
+      data.clock,
+    ),
+  ).rejects.toMatchObject({ kind: 'cancelled' });
+  expect(reports).toBe(1);
+  expect(releases).toBe(1);
+});
+
+test('stops after the second terminal failure', async () => {
+  const data = await fixture();
+  const conflict = new TerminalReportFailure('terminal conflict', 'conflict');
+  const respond = reportInOrder([
+    () =>
+      Promise.reject(new TerminalReportFailure('response lost', 'retryable')),
+    () => Promise.reject(conflict),
+  ]);
+  let reports = 0;
+  await expect(
+    coordinateNativeV2Attempt(
+      data.request,
+      workingPorts(data, () => {
+        reports++;
+        return respond();
+      }),
+      data.clock,
+    ),
+  ).rejects.toBe(conflict);
+  expect(reports).toBe(2);
+});
+
+test('preserves local work failure when the exact terminal retry also fails', async () => {
+  const data = await fixture();
+  const conflict = new TerminalReportFailure('terminal conflict', 'conflict');
+  const ports = failingPorts('running', data, []);
+  const respond = reportInOrder([
+    () =>
+      Promise.reject(new TerminalReportFailure('response lost', 'retryable')),
+    () => Promise.reject(conflict),
+  ]);
+  let reports = 0;
+  ports.report = () => {
+    reports++;
+    return respond();
+  };
+  const failure = await coordinateNativeV2Attempt(
+    data.request,
+    ports,
+    data.clock,
+  ).then(
+    () => undefined,
+    (error: unknown) => error,
+  );
+
+  expect(reports).toBe(2);
+  expect(failure).toBeInstanceOf(AggregateError);
+  expect((failure as AggregateError).errors).toMatchObject([
+    { message: 'private process detail' },
+    { kind: 'conflict' },
+  ]);
 });
 
 for (const [stage, expectedCode] of [

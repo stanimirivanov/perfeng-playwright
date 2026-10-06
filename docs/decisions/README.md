@@ -95,3 +95,5 @@ How will assumptions and consequences be verified?
   — Proposed
 - [ADR-0007: Inspect retained Native Worker attempts without resuming](0007-inspect-retained-native-attempts-without-resuming.md)
   — Proposed
+- [ADR-0008: Retry exact Native Worker terminal claims once](0008-retry-exact-native-terminal-claims-once.md)
+  — Proposed
