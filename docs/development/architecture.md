@@ -101,7 +101,9 @@ terminal reporting and release as focused operations. The execution loop remains
 unfinished. An internal supervisor maintains v2 lease authority and forward phases around one
 abort-aware operation. The v2 attempt coordinator now composes local execution, publication and
 terminal reporting within that supervision boundary. It also releases stopped cancellation and
-shutdown attempts while authority remains proven. Acquisition and restart recovery are still absent.
+shutdown attempts while authority remains proven. A read-only spool inventory exposes retained
+local paths for operator review; it does not recover server authority. Acquisition and restart
+recovery are still absent.
 The complete worker loop should use an explicit transition model:
 
 ```text

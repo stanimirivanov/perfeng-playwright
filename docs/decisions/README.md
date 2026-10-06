@@ -93,3 +93,5 @@ How will assumptions and consequences be verified?
   — Proposed
 - [ADR-0006: Release stopped Native Worker attempts within proven authority](0006-release-stopped-native-attempts-within-proven-authority.md)
   — Proposed
+- [ADR-0007: Inspect retained Native Worker attempts without resuming](0007-inspect-retained-native-attempts-without-resuming.md)
+  — Proposed
