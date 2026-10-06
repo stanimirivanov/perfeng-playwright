@@ -261,3 +261,12 @@ directory and any committed files remain for inspection. The ignored `dist/cli.j
 not itself bound by the source-checkout digest, so operators must build it from the reviewed checkout.
 Lease renewal, authority loss, upload, terminal reporting, restart recovery and cleanup still need a
 single lifecycle coordinator before the worker may report `AVAILABLE`.
+
+The v2 evidence-publication operation reloads the committed local measurements before any remote
+request. It grants, uploads and registers that slot first, then builds the `raw-result/v2` manifest
+from the registered reference and publishes the manifest last. It does not report terminal success.
+The manifest timestamp is selected after measurement registration; if manifest publication fails
+after local commitment, an explicit retry must reuse the original `createdAt` to reproduce the exact
+bytes. Mismatched recovery state is preserved and rejected rather than replaced. The caller must
+keep renewal, cancellation and revision authority current throughout this operation; the future
+lifecycle coordinator owns that policy. No CLI work acquisition or external target is enabled here.
