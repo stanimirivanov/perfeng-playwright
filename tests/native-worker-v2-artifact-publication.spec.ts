@@ -30,9 +30,12 @@ type RegistrationReply = () => Promise<Response>;
 async function publicationWithRegistrationReplies(
   replies: RegistrationReply[],
   expectedRunRevision: NativeArtifactPublicationRequest['expectedRunRevision'] = 5,
+  grantReplies?: RegistrationReply[],
+  signal?: AbortSignal,
 ) {
   const directory = await mkdtemp(join(tmpdir(), 'perfeng-v2-registration-'));
   const stages: string[] = [];
+  const grantBodies: string[] = [];
   const registrationBodies: string[] = [];
   try {
     const content = Buffer.from('{"schema":"playwright-measurements/v2"}\n');
@@ -56,8 +59,11 @@ async function publicationWithRegistrationReplies(
       size: content.byteLength,
       sha256: digest,
       mediaType: 'application/json',
+      ...(signal === undefined ? {} : { signal }),
     };
     const pendingReplies = [...replies];
+    const pendingGrantReplies =
+      grantReplies === undefined ? undefined : [...grantReplies];
     try {
       const result = await publishNativeArtifact(request, {
         controlPlane: (input: URL | RequestInfo, init?: RequestInit) => {
@@ -65,21 +71,30 @@ async function publicationWithRegistrationReplies(
           expect(pathname).toMatch(/^\/native-worker\/v2\/leases\/[^/]+\//);
           if (pathname.endsWith('/upload-grants')) {
             stages.push('grant');
-            return Promise.resolve(
-              new Response(
-                JSON.stringify({
-                  ...grant,
-                  sha256: digest,
-                  uploadHeaders: {
-                    'content-type': 'application/json',
-                    'x-amz-checksum-sha256': Buffer.from(
-                      digest,
-                      'hex',
-                    ).toString('base64'),
-                  },
-                }),
-                { status: 201 },
-              ),
+            grantBodies.push(init?.body as string);
+            const reply = pendingGrantReplies?.shift();
+            if (pendingGrantReplies !== undefined && reply === undefined) {
+              return Promise.reject(new Error('unexpected grant attempt'));
+            }
+            return (
+              reply?.() ?? Promise.resolve(new Response(null, { status: 201 }))
+            ).then((response) =>
+              response.status === 201
+                ? new Response(
+                    JSON.stringify({
+                      ...grant,
+                      sha256: digest,
+                      uploadHeaders: {
+                        'content-type': 'application/json',
+                        'x-amz-checksum-sha256': Buffer.from(
+                          digest,
+                          'hex',
+                        ).toString('base64'),
+                      },
+                    }),
+                    { status: 201 },
+                  )
+                : response,
             );
           }
           stages.push('register');
@@ -107,9 +122,9 @@ async function publicationWithRegistrationReplies(
           return Promise.resolve(new Response(null, { status: 200 }));
         },
       });
-      return { result, stages, registrationBodies };
+      return { result, stages, grantBodies, registrationBodies };
     } catch (error) {
-      return { error, stages, registrationBodies };
+      return { error, stages, grantBodies, registrationBodies };
     }
   } finally {
     await rm(directory, { recursive: true, force: true });
@@ -367,6 +382,86 @@ test('stops after a second uncertain v2 registration response without re-uploadi
   expect(attempt.error).toMatchObject({ kind: 'retryable' });
   expect(attempt.stages).toEqual(['grant', 'upload', 'register', 'register']);
   expect(attempt.registrationBodies[1]).toBe(attempt.registrationBodies[0]);
+});
+
+test('retries the unchanged v2 grant declaration after a lost response before uploading', async () => {
+  let revisionReads = 0;
+  const attempt = await publicationWithRegistrationReplies(
+    [() => Promise.resolve(new Response(null, { status: 201 }))],
+    () => {
+      revisionReads += 1;
+      return revisionReads === 1 ? 5 : 6;
+    },
+    [
+      () => Promise.reject(new Error('sensitive transport failure')),
+      () => Promise.resolve(new Response(null, { status: 201 })),
+    ],
+  );
+  expect(attempt.error).toBeUndefined();
+  expect(attempt.result).toMatchObject({ slot: 'measurements' });
+  expect(attempt.stages).toEqual(['grant', 'grant', 'upload', 'register']);
+  expect(attempt.grantBodies).toHaveLength(2);
+  expect(attempt.grantBodies[1]).toBe(attempt.grantBodies[0]);
+  expect(JSON.parse(attempt.grantBodies[0] ?? '')).toMatchObject({
+    expectedRunRevision: 5,
+  });
+  expect(JSON.parse(attempt.registrationBodies[0] ?? '')).toMatchObject({
+    expectedRunRevision: 6,
+  });
+  expect(revisionReads).toBe(2);
+});
+
+test('does not retry a server-paced v2 grant or transfer bytes', async () => {
+  const attempt = await publicationWithRegistrationReplies([], 5, [
+    () =>
+      Promise.resolve(
+        new Response('sensitive server detail', {
+          status: 503,
+          headers: { 'retry-after': '12' },
+        }),
+      ),
+  ]);
+  expect(attempt.error).toMatchObject({
+    kind: 'retryable',
+    retryAfterSeconds: 12,
+  });
+  expect(String(attempt.error)).not.toContain('sensitive server detail');
+  expect(attempt.stages).toEqual(['grant']);
+});
+
+test('does not retry a conflicting v2 grant or transfer bytes', async () => {
+  const attempt = await publicationWithRegistrationReplies([], 5, [
+    () => Promise.resolve(new Response(null, { status: 409 })),
+  ]);
+  expect(attempt.error).toMatchObject({ kind: 'conflict' });
+  expect(attempt.stages).toEqual(['grant']);
+});
+
+test('does not retry a v2 grant after caller cancellation', async () => {
+  const controller = new AbortController();
+  const attempt = await publicationWithRegistrationReplies(
+    [],
+    5,
+    [
+      () => {
+        controller.abort();
+        return Promise.resolve(new Response(null, { status: 500 }));
+      },
+    ],
+    controller.signal,
+  );
+  expect(attempt.error).toMatchObject({ kind: 'cancelled' });
+  expect(attempt.stages).toEqual(['grant']);
+});
+
+test('stops after two uncertain v2 grant responses without uploading', async () => {
+  const attempt = await publicationWithRegistrationReplies([], 5, [
+    () => Promise.resolve(new Response(null, { status: 500 })),
+    () => Promise.resolve(new Response(null, { status: 500 })),
+  ]);
+  expect(attempt.error).toMatchObject({ kind: 'retryable' });
+  expect(attempt.stages).toEqual(['grant', 'grant']);
+  expect(attempt.grantBodies[1]).toBe(attempt.grantBodies[0]);
 });
 
 test('pins byte-identical v2 artifact-publication fixtures', async () => {

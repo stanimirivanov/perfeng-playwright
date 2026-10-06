@@ -99,3 +99,5 @@ How will assumptions and consequences be verified?
   — Proposed
 - [ADR-0009: Retry exact Native Worker artifact registration once](0009-retry-exact-native-artifact-registration-once.md)
   — Proposed
+- [ADR-0010: Retry exact Native Worker upload grant once](0010-retry-exact-native-upload-grant-once.md)
+  — Proposed
