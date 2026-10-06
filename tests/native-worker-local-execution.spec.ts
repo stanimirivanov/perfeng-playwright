@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -74,16 +75,40 @@ function copyingRunner(payload: string, receipt: string): string {
 
 test('runs the exact prepared command then returns only validated local evidence', async ({}, testInfo) => {
   const source = await fixture(testInfo);
+  const transitions: string[] = [];
+  const attemptDirectory = join(
+    source.spoolRoot,
+    `${source.request.authority.recipe.runId}-${source.request.authority.recipe.attemptId}`,
+  );
   await writeFile(
     source.entrypoint,
     copyingRunner(source.payload, source.receipt),
   );
 
   const result = await executeNativeLocalAttempt(
-    source.request,
+    {
+      ...source.request,
+      onPrepared: () => {
+        transitions.push('prepared');
+        expect(existsSync(join(attemptDirectory, 'runner-config.json'))).toBe(
+          true,
+        );
+        expect(existsSync(join(attemptDirectory, 'measurements.json'))).toBe(
+          false,
+        );
+      },
+      onRunnerCompleted: () => {
+        transitions.push('runner-completed');
+        expect(existsSync(join(attemptDirectory, 'measurements.json'))).toBe(
+          true,
+        );
+        expect(existsSync(join(attemptDirectory, 'receipt.json'))).toBe(true);
+      },
+    },
     source.inspectCheckout,
   );
 
+  expect(transitions).toEqual(['prepared', 'runner-completed']);
   expect(result.measurements).toEqual(source.measurements);
   expect(result.artifact.path).toBe(result.prepared.measurementsPath);
   expect(await readFile(result.prepared.receiptPath, 'utf8')).toContain(
@@ -141,11 +166,24 @@ test('requires the reviewed entry point and assigned checkout before creating st
 
 test('retains attempt state after process failure without accepting evidence', async ({}, testInfo) => {
   const source = await fixture(testInfo);
+  const transitions: string[] = [];
   await writeFile(source.entrypoint, 'process.exit(17)');
 
   await expect(
-    executeNativeLocalAttempt(source.request, source.inspectCheckout),
+    executeNativeLocalAttempt(
+      {
+        ...source.request,
+        onPrepared: () => {
+          transitions.push('prepared');
+        },
+        onRunnerCompleted: () => {
+          transitions.push('runner-completed');
+        },
+      },
+      source.inspectCheckout,
+    ),
   ).rejects.toMatchObject({ kind: 'exit' });
+  expect(transitions).toEqual(['prepared']);
   const [attempt] = await readdir(source.spoolRoot);
   assert.ok(attempt);
   expect(await readdir(join(source.spoolRoot, attempt))).toEqual([

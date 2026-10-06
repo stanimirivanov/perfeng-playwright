@@ -276,6 +276,13 @@ finalizes. It renews immediately, then at the server-directed interval, exposes 
 revision, and permits only forward phase transitions. Server cancellation, lost authority, expiry,
 shutdown or a renewal failure aborts the operation and waits for it to settle. It does not claim
 release or terminal completion, automatically retry renewal, or remove evidence; see
-[ADR-0004](decisions/0004-fail-closed-native-lease-supervision.md). The complete coordinator still
-needs to compose local execution, publication, release and terminal reporting before the CLI can
-acquire work.
+[ADR-0004](decisions/0004-fail-closed-native-lease-supervision.md). The complete worker loop still
+needs release and restart-recovery policy before the CLI can acquire work.
+
+An internal v2 attempt coordinator now composes preparation, runner execution, measurement
+validation, measurement-before-manifest publication and terminal reporting under that supervisor.
+It reports fixed stage-specific failure codes only while authority remains active; local error
+details are never copied into a terminal message. A cancelled or lost attempt makes no terminal
+claim. Terminal uncertainty and partial evidence are retained for explicit recovery. Release,
+restart recovery and the acquisition loop remain unfinished, so the CLI still reports
+`UNAVAILABLE`; see [ADR-0005](decisions/0005-report-native-attempt-terminal-within-lease-supervision.md).

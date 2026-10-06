@@ -34,6 +34,14 @@ export class NativeV2SupervisionFailure extends Error {
   }
 }
 
+/** The attempt callback tried to skip, repeat or reverse an execution phase. */
+export class NativeV2PhaseTransitionFailure extends Error {
+  constructor() {
+    super('Native v2 attempt phase transition is invalid');
+    this.name = 'NativeV2PhaseTransitionFailure';
+  }
+}
+
 export interface NativeV2LeaseSupervisionRequest {
   controlPlaneOrigin: string;
   token: string;
@@ -147,12 +155,14 @@ export async function superviseNativeV2Lease<T>(
     expectedRunRevision: () => revision,
     advancePhase: (next) => {
       const currentIndex = phases.indexOf(phase);
-      if (
-        workSignal.aborted ||
-        clock.monotonicNow() >= expiryDeadline ||
-        phases[currentIndex + 1] !== next
-      ) {
-        throw new Error('Native v2 attempt phase transition is invalid');
+      if (workSignal.aborted) {
+        throw new NativeV2SupervisionFailure('cancelled');
+      }
+      if (clock.monotonicNow() >= expiryDeadline) {
+        throw new NativeV2SupervisionFailure('expired');
+      }
+      if (phases[currentIndex + 1] !== next) {
+        throw new NativeV2PhaseTransitionFailure();
       }
       phase = next;
     },

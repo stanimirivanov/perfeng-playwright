@@ -7,6 +7,7 @@ import { expect, test, type TestInfo } from '@playwright/test';
 import { writeJourneyArtifacts } from '../src/journey/artifact.js';
 import type { PlaywrightMeasurements } from '../src/journey/types.js';
 import type { NativeArtifactPublicationTransport } from '../src/native-worker/artifact-publication.js';
+import { currentNativeRevision } from '../src/native-worker/artifact-publication.js';
 import { prepareNativeAttempt } from '../src/native-worker/attempt-preparation.js';
 import {
   publishNativeV2Evidence,
@@ -63,6 +64,7 @@ async function transportFor(
   request: NativeV2EvidencePublicationRequest,
   events: string[],
   fail: (stage: string) => boolean = () => false,
+  seenRevisions?: number[],
 ): Promise<NativeArtifactPublicationTransport> {
   const [grantText, artifactText] = await Promise.all([
     readFile(`${fixtureRoot}/upload-grant.json`, 'utf8'),
@@ -85,7 +87,10 @@ async function transportFor(
         size: number;
         sha256: string;
       };
-      expect(body.expectedRunRevision).toBe(request.expectedRunRevision);
+      seenRevisions?.push(body.expectedRunRevision);
+      expect(body.expectedRunRevision).toBe(
+        currentNativeRevision(request.expectedRunRevision),
+      );
       const slot = body.slot;
       const action = path.endsWith('/upload-grants') ? 'grant' : 'register';
       const stage = `${action}:${slot}`;
@@ -222,6 +227,42 @@ test('registers measurements before publishing the manifest that names them', as
   expect(manifest.createdAt).toBe(createdAt);
   expect(manifest.artifacts).toMatchObject([
     { id: result.measurements.artifactId, sha256: result.measurements.sha256 },
+  ]);
+});
+
+test('reads the current lease revision for each grant and registration after upload', async ({}, testInfo) => {
+  const { request } = await fixture(testInfo);
+  const events: string[] = [];
+  const seenRevisions: number[] = [];
+  let currentRevision = 5;
+  const liveRequest: NativeV2EvidencePublicationRequest = {
+    ...request,
+    expectedRunRevision: () => currentRevision,
+  };
+  const base = await transportFor(
+    liveRequest,
+    events,
+    () => false,
+    seenRevisions,
+  );
+
+  await publishNativeV2Evidence(liveRequest, {
+    controlPlane: base.controlPlane,
+    objectStore: async (input, init) => {
+      const response = await base.objectStore(input, init);
+      currentRevision++;
+      return response;
+    },
+  });
+
+  expect(seenRevisions).toEqual([5, 6, 6, 7]);
+  expect(events).toEqual([
+    'grant:measurements',
+    'upload:measurements',
+    'register:measurements',
+    'grant:manifest',
+    'upload:manifest',
+    'register:manifest',
   ]);
 });
 
