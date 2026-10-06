@@ -284,7 +284,7 @@ test('does not contact storage for invalid local measurements or cancellation', 
       { ...request, signal: controller.signal },
       transport,
     ),
-  ).rejects.toThrow('cancelled');
+  ).rejects.toMatchObject({ kind: 'cancelled' });
   expect(events).toEqual([]);
 });
 
@@ -322,7 +322,7 @@ test('does not create a manifest after cancellation at the measurement boundary'
         abortAfterMeasurementRegistration(controller),
       ),
     ),
-  ).rejects.toThrow('cancelled');
+  ).rejects.toMatchObject({ kind: 'cancelled' });
   expect(events).toEqual([
     'grant:measurements',
     'upload:measurements',

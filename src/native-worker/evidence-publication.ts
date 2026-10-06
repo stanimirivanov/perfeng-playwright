@@ -28,6 +28,16 @@ export interface PublishedNativeV2Evidence {
   manifest: PublishedNativeRawResultManifest;
 }
 
+/** An upload-stage abort after which the publication operation has settled. */
+export class NativeV2EvidencePublicationCancelled extends Error {
+  readonly kind = 'cancelled' as const;
+
+  constructor() {
+    super('Native v2 evidence publication was cancelled');
+    this.name = 'NativeV2EvidencePublicationCancelled';
+  }
+}
+
 /**
  * Publishes validated v2 measurements, then the manifest that references their
  * registered identity. The caller owns lease renewal and terminal reporting.
@@ -87,6 +97,6 @@ export async function publishNativeV2Evidence(
 
 function assertNotCancelled(signal: AbortSignal): void {
   if (signal.aborted) {
-    throw new Error('Native v2 evidence publication was cancelled');
+    throw new NativeV2EvidencePublicationCancelled();
   }
 }

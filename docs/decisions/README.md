@@ -91,3 +91,5 @@ How will assumptions and consequences be verified?
   — Proposed
 - [ADR-0005: Report Native Worker terminal outcomes within lease supervision](0005-report-native-attempt-terminal-within-lease-supervision.md)
   — Proposed
+- [ADR-0006: Release stopped Native Worker attempts within proven authority](0006-release-stopped-native-attempts-within-proven-authority.md)
+  — Proposed

@@ -61,6 +61,13 @@ export interface NativeV2SupervisionClock {
   wait(milliseconds: number, signal: AbortSignal): Promise<void>;
 }
 
+/** A bounded release opportunity after abort-aware work has settled. */
+export interface NativeV2StoppedLease {
+  reason: 'CANCELLATION_REQUESTED' | 'WORKER_SHUTDOWN';
+  expectedRunRevision: number;
+  remainingMilliseconds: number;
+}
+
 const defaultClock: NativeV2SupervisionClock = {
   monotonicNow: () => performance.now(),
   wait: (milliseconds, signal) => delay(milliseconds, undefined, { signal }),
@@ -80,6 +87,7 @@ export async function superviseNativeV2Lease<T>(
   work: (context: NativeV2LeaseContext) => Promise<T>,
   renew: typeof renewNativeLease = renewNativeLease,
   clock: NativeV2SupervisionClock = defaultClock,
+  onStopped?: (stopped: NativeV2StoppedLease) => Promise<void>,
 ): Promise<T> {
   if (!(request.authority instanceof AcquiredNativeV2Lease)) {
     throw new Error('V2 lease supervision requires acquired v2 authority');
@@ -94,6 +102,7 @@ export async function superviseNativeV2Lease<T>(
   let phase: NativeExecutionPhase = 'PREPARING';
   let revision = request.authority.recipe.runRevision;
   let expiryDeadline = 0;
+  let cancellationDeadline = 0;
   let renewAfterMilliseconds = 0;
 
   const accept = (value: NativeLeaseRenewal, sentAt: number): void => {
@@ -105,9 +114,6 @@ export async function superviseNativeV2Lease<T>(
       throw new NativeV2SupervisionFailure('lost');
     }
     revision = value.runRevision;
-    if (value.cancellationRequested) {
-      throw new NativeV2SupervisionFailure('server-cancelled', value.stopBy);
-    }
     const lifetime = Date.parse(value.expiresAt) - Date.parse(value.serverTime);
     if (
       !Number.isFinite(lifetime) ||
@@ -125,6 +131,19 @@ export async function superviseNativeV2Lease<T>(
     );
     if (clock.monotonicNow() >= expiryDeadline) {
       throw new NativeV2SupervisionFailure('expired');
+    }
+    if (value.cancellationRequested) {
+      const stopInterval =
+        Date.parse(value.stopBy) - Date.parse(value.serverTime);
+      if (
+        !Number.isFinite(stopInterval) ||
+        stopInterval <= 0 ||
+        stopInterval > lifetime
+      ) {
+        throw new NativeV2SupervisionFailure('renewal');
+      }
+      cancellationDeadline = sentAt + stopInterval;
+      throw new NativeV2SupervisionFailure('server-cancelled', value.stopBy);
     }
   };
   const renewOnce = async (): Promise<void> => {
@@ -146,9 +165,56 @@ export async function superviseNativeV2Lease<T>(
     }
   };
 
-  await renewOnce();
+  const releaseStopped = async (
+    interruption: NativeV2SupervisionFailure,
+  ): Promise<void> => {
+    if (onStopped === undefined) {
+      return;
+    }
+    const reason =
+      interruption.kind === 'server-cancelled'
+        ? 'CANCELLATION_REQUESTED'
+        : interruption.kind === 'cancelled'
+          ? 'WORKER_SHUTDOWN'
+          : undefined;
+    if (reason === undefined) {
+      return;
+    }
+    const deadline =
+      reason === 'CANCELLATION_REQUESTED'
+        ? Math.min(expiryDeadline, cancellationDeadline)
+        : expiryDeadline;
+    const remainingMilliseconds = Math.floor(deadline - clock.monotonicNow());
+    if (!Number.isFinite(remainingMilliseconds) || remainingMilliseconds <= 0) {
+      return;
+    }
+    try {
+      await onStopped({
+        reason,
+        expectedRunRevision: revision,
+        remainingMilliseconds,
+      });
+    } catch (error) {
+      throw new AggregateError(
+        [interruption, error],
+        'Native v2 interruption and release both failed',
+        { cause: error },
+      );
+    }
+  };
+
+  try {
+    await renewOnce();
+  } catch (error) {
+    if (error instanceof NativeV2SupervisionFailure) {
+      await releaseStopped(error);
+    }
+    throw error;
+  }
   if (isAborted(request.signal)) {
-    throw new NativeV2SupervisionFailure('cancelled');
+    const interruption = new NativeV2SupervisionFailure('cancelled');
+    await releaseStopped(interruption);
+    throw interruption;
   }
   const context: NativeV2LeaseContext = {
     signal: workSignal,
@@ -210,6 +276,9 @@ export async function superviseNativeV2Lease<T>(
           'Native v2 lease interruption and work termination both failed',
         );
       }
+      if (winner.outcome.error instanceof NativeV2SupervisionFailure) {
+        await releaseStopped(winner.outcome.error);
+      }
       throw winner.outcome.error;
     }
     throw new NativeV2SupervisionFailure('cancelled');
@@ -228,10 +297,24 @@ export async function superviseNativeV2Lease<T>(
         'Native v2 renewal and work both failed',
       );
     }
+    if (
+      renewalOutcome.error instanceof NativeV2SupervisionFailure &&
+      winner.outcome.kind === 'failure' &&
+      isCancellation(winner.outcome.error)
+    ) {
+      await releaseStopped(renewalOutcome.error);
+    }
     throw renewalOutcome.error;
   }
   if (isAborted(request.signal)) {
-    throw new NativeV2SupervisionFailure('cancelled');
+    const interruption = new NativeV2SupervisionFailure('cancelled');
+    if (
+      winner.outcome.kind === 'failure' &&
+      isCancellation(winner.outcome.error)
+    ) {
+      await releaseStopped(interruption);
+    }
+    throw interruption;
   }
   if (clock.monotonicNow() >= expiryDeadline) {
     throw new NativeV2SupervisionFailure('expired');

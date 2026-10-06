@@ -259,8 +259,9 @@ then loads the validated measurements. The worker-audience token is refused in t
 Cancellation, timeout, nonzero exit or invalid output never produces publication inputs; the attempt
 directory and any committed files remain for inspection. The ignored `dist/cli.js` build output is
 not itself bound by the source-checkout digest, so operators must build it from the reviewed checkout.
-Lease renewal, authority loss, upload, terminal reporting, restart recovery and cleanup still need a
-single lifecycle coordinator before the worker may report `AVAILABLE`.
+The local helper alone does not renew, publish or report. The later attempt coordinator composes
+those steps; restart recovery and acquisition remain required before the worker may report
+`AVAILABLE`.
 
 The v2 evidence-publication operation reloads the committed local measurements before any remote
 request. It grants, uploads and registers that slot first, then builds the `raw-result/v2` manifest
@@ -268,8 +269,8 @@ from the registered reference and publishes the manifest last. It does not repor
 The manifest timestamp is selected after measurement registration; if manifest publication fails
 after local commitment, an explicit retry must reuse the original `createdAt` to reproduce the exact
 bytes. Mismatched recovery state is preserved and rejected rather than replaced. The caller must
-keep renewal, cancellation and revision authority current throughout this operation; the future
-lifecycle coordinator owns that policy. No CLI work acquisition or external target is enabled here.
+keep renewal, cancellation and revision authority current throughout this operation; the attempt
+coordinator owns that policy. No CLI work acquisition or external target is enabled here.
 
 The v2 lease supervisor can wrap an abort-aware attempt while it prepares, runs, uploads and
 finalizes. It renews immediately, then at the server-directed interval, exposes the latest accepted
@@ -277,12 +278,18 @@ revision, and permits only forward phase transitions. Server cancellation, lost 
 shutdown or a renewal failure aborts the operation and waits for it to settle. It does not claim
 release or terminal completion, automatically retry renewal, or remove evidence; see
 [ADR-0004](decisions/0004-fail-closed-native-lease-supervision.md). The complete worker loop still
-needs release and restart-recovery policy before the CLI can acquire work.
+needs restart-recovery and acquisition policy before the CLI can acquire work.
 
 An internal v2 attempt coordinator now composes preparation, runner execution, measurement
 validation, measurement-before-manifest publication and terminal reporting under that supervisor.
 It reports fixed stage-specific failure codes only while authority remains active; local error
 details are never copied into a terminal message. A cancelled or lost attempt makes no terminal
-claim. Terminal uncertainty and partial evidence are retained for explicit recovery. Release,
-restart recovery and the acquisition loop remain unfinished, so the CLI still reports
-`UNAVAILABLE`; see [ADR-0005](decisions/0005-report-native-attempt-terminal-within-lease-supervision.md).
+claim. Terminal uncertainty and partial evidence are retained for explicit recovery; see
+[ADR-0005](decisions/0005-report-native-attempt-terminal-within-lease-supervision.md).
+
+After server cancellation or worker shutdown, the supervisor offers release only once abort-aware
+work has settled and the lease still has time before its expiry or `stopBy` deadline. The coordinator
+uses the latest accepted revision and an independent bounded request signal. Lost authority,
+uncertain renewal and failed process termination never claim release. Restart recovery and the
+acquisition loop remain unfinished, so the CLI still reports `UNAVAILABLE`; see
+[ADR-0006](decisions/0006-release-stopped-native-attempts-within-proven-authority.md).
