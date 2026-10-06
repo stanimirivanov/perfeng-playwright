@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { currentNativeRevision } from '../src/native-worker/artifact-publication.js';
 import { ArtifactRegistrationFailure } from '../src/native-worker/artifact-registration.js';
+import { NativeV2EvidencePublicationCancelled } from '../src/native-worker/evidence-publication.js';
 import {
   coordinateNativeV2Attempt,
   type NativeV2AttemptPorts,
@@ -123,7 +124,12 @@ function failingPorts(
         disposition: 'ACCEPTED',
       });
     },
+    release: unexpectedRelease,
   };
+}
+
+function unexpectedRelease(): Promise<void> {
+  return Promise.reject(new Error('Release must not run'));
 }
 
 function gatedClock() {
@@ -203,6 +209,7 @@ test('keeps renewal active through ordered publication and completed terminal re
         disposition: 'ACCEPTED',
       });
     },
+    release: unexpectedRelease,
   };
 
   const result = await coordinateNativeV2Attempt(request, ports, clock);
@@ -253,6 +260,7 @@ test('publishes and reports with revisions accepted during the running and uploa
           disposition: 'ACCEPTED',
         });
       },
+      release: unexpectedRelease,
     },
     clock,
   );
@@ -298,6 +306,7 @@ test('preserves both local and terminal-report failures for explicit recovery', 
         Promise.reject(
           new TerminalReportFailure('terminal conflict', 'conflict'),
         ),
+      release: unexpectedRelease,
     },
     clock,
   ).then(
@@ -311,10 +320,11 @@ test('preserves both local and terminal-report failures for explicit recovery', 
   ]);
 });
 
-test('does not report terminal after cancellation during execution', async () => {
+test('releases a stopped shutdown attempt without terminal reporting', async () => {
   const { request, clock, renewal } = await fixture();
   const controller = new AbortController();
   let reports = 0;
+  const releases: string[] = [];
   await expect(
     coordinateNativeV2Attempt(
       { ...request, signal: controller.signal },
@@ -330,11 +340,53 @@ test('does not report terminal after cancellation during execution', async () =>
           reports++;
           return Promise.reject(new Error('terminal must not run'));
         },
+        release: (value) => {
+          releases.push(value.reason);
+          expect(value.expectedRunRevision).toBe(5);
+          expect(value.signal?.aborted).toBe(false);
+          return Promise.resolve();
+        },
       },
       clock,
     ),
   ).rejects.toMatchObject({ kind: 'cancelled' });
   expect(reports).toBe(0);
+  expect(releases).toEqual(['WORKER_SHUTDOWN']);
+});
+
+test('releases shutdown during publication without claiming terminal state', async () => {
+  const { request, local, clock, renewal } = await fixture();
+  const controller = new AbortController();
+  const releases: string[] = [];
+  let reports = 0;
+  await expect(
+    coordinateNativeV2Attempt(
+      { ...request, signal: controller.signal },
+      {
+        renew: () => Promise.resolve(renewal),
+        execute: (value) => {
+          value.onPrepared?.();
+          value.onRunnerCompleted?.();
+          return Promise.resolve(local);
+        },
+        publish: () => {
+          controller.abort();
+          return Promise.reject(new NativeV2EvidencePublicationCancelled());
+        },
+        report: () => {
+          reports++;
+          return Promise.reject(new Error('terminal must not run'));
+        },
+        release: (value) => {
+          releases.push(value.reason);
+          return Promise.resolve();
+        },
+      },
+      clock,
+    ),
+  ).rejects.toMatchObject({ kind: 'cancelled' });
+  expect(reports).toBe(0);
+  expect(releases).toEqual(['WORKER_SHUTDOWN']);
 });
 
 test('does not report terminal after losing the lease during execution', async () => {
@@ -363,6 +415,7 @@ test('does not report terminal after losing the lease during execution', async (
           reports++;
           return Promise.reject(new Error('terminal must not run'));
         },
+        release: unexpectedRelease,
       },
       clock,
     ),
@@ -392,6 +445,7 @@ for (const failure of [
             reports++;
             return Promise.reject(new Error('terminal must not run'));
           },
+          release: unexpectedRelease,
         },
         clock,
       ),
@@ -420,6 +474,7 @@ test('does not misreport a completed-terminal conflict as a work failure', async
             new TerminalReportFailure('terminal conflict', 'conflict'),
           );
         },
+        release: unexpectedRelease,
       },
       clock,
     ),

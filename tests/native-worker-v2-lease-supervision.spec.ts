@@ -200,6 +200,107 @@ test('server cancellation aborts work and preserves the stop deadline', async ()
   expect(cancelledRevision).toBe(6);
 });
 
+test('offers release only after cancelled work settles and before stopBy', async () => {
+  const request = await fixture();
+  const events: string[] = [];
+  const cancelled: NativeLeaseRenewal = {
+    ...renewal(request.authority, 6),
+    cancellationRequested: true,
+    stopBy: '2026-09-18T12:00:30Z',
+  };
+
+  await expect(
+    superviseNativeV2Lease(
+      request,
+      async (context) => {
+        await waitForAbort(context.signal);
+        events.push('stopped');
+        throw new NativeRunnerProcessFailure('cancelled');
+      },
+      renewWith([renewal(request.authority), cancelled], []),
+      immediateFirstTickClock(),
+      (stopped) => {
+        events.push('release');
+        expect(stopped).toEqual({
+          reason: 'CANCELLATION_REQUESTED',
+          expectedRunRevision: 6,
+          remainingMilliseconds: 20_000,
+        });
+        return Promise.resolve();
+      },
+    ),
+  ).rejects.toMatchObject({ kind: 'server-cancelled' });
+  expect(events).toEqual(['stopped', 'release']);
+});
+
+test('does not offer release after the cancellation deadline passes during process stop', async () => {
+  const request = await fixture();
+  let elapsed = 0;
+  let releases = 0;
+  const clock: NativeV2SupervisionClock = {
+    monotonicNow: () => elapsed,
+    wait: () => Promise.resolve(),
+  };
+  let renewals = 0;
+
+  await expect(
+    superviseNativeV2Lease(
+      request,
+      async (context) => {
+        await waitForAbort(context.signal);
+        elapsed = 20_000;
+        throw new NativeRunnerProcessFailure('cancelled');
+      },
+      () => {
+        renewals++;
+        return Promise.resolve(
+          renewals === 1
+            ? renewal(request.authority)
+            : {
+                ...renewal(request.authority, 6),
+                cancellationRequested: true,
+                stopBy: '2026-09-18T12:00:30Z',
+              },
+        );
+      },
+      clock,
+      () => {
+        releases++;
+        return Promise.resolve();
+      },
+    ),
+  ).rejects.toMatchObject({ kind: 'server-cancelled' });
+  expect(releases).toBe(0);
+});
+
+test('server cancellation before work begins can release the acquired attempt', async () => {
+  const request = await fixture();
+  let started = false;
+  const reasons: string[] = [];
+  await expect(
+    superviseNativeV2Lease(
+      request,
+      () => {
+        started = true;
+        return Promise.resolve();
+      },
+      () =>
+        Promise.resolve({
+          ...renewal(request.authority, 5),
+          cancellationRequested: true,
+          stopBy: '2026-09-18T12:00:30Z',
+        }),
+      stoppedClock(),
+      (stopped) => {
+        reasons.push(stopped.reason);
+        return Promise.resolve();
+      },
+    ),
+  ).rejects.toMatchObject({ kind: 'server-cancelled' });
+  expect(started).toBe(false);
+  expect(reasons).toEqual(['CANCELLATION_REQUESTED']);
+});
+
 test('lost authority fails before starting work', async () => {
   const request = await fixture();
   let started = false;
@@ -220,6 +321,7 @@ test('lost authority fails before starting work', async () => {
 test('lost authority during renewal aborts active work', async () => {
   const request = await fixture();
   let renewals = 0;
+  let releases = 0;
   await expect(
     superviseNativeV2Lease(
       request,
@@ -234,9 +336,14 @@ test('lost authority during renewal aborts active work', async () => {
           : Promise.reject(new LeaseRenewalFailure('lost', 'lost'));
       },
       immediateFirstTickClock(),
+      () => {
+        releases++;
+        return Promise.resolve();
+      },
     ),
   ).rejects.toMatchObject({ kind: 'lost' });
   expect(renewals).toBe(2);
+  expect(releases).toBe(0);
 });
 
 test('a retryable renewal failure also stops work without an implicit retry', async () => {
@@ -320,6 +427,7 @@ test('expiry after a delayed wake aborts work without another renewal', async ()
   const request = await fixture();
   let elapsed = 0;
   let renewals = 0;
+  let releases = 0;
   const clock: NativeV2SupervisionClock = {
     monotonicNow: () => elapsed,
     wait: () => {
@@ -340,9 +448,14 @@ test('expiry after a delayed wake aborts work without another renewal', async ()
         return Promise.resolve(renewal(request.authority));
       },
       clock,
+      () => {
+        releases++;
+        return Promise.resolve();
+      },
     ),
   ).rejects.toMatchObject({ kind: 'expired' });
   expect(renewals).toBe(1);
+  expect(releases).toBe(0);
 });
 
 test('rejects skipped phases and propagates an operation failure', async () => {
@@ -422,4 +535,93 @@ test('shutdown during work aborts the callback before returning', async () => {
       stoppedClock(),
     ),
   ).rejects.toMatchObject({ kind: 'cancelled' });
+});
+
+test('shutdown release uses current authority after the work has stopped', async () => {
+  const request = await fixture();
+  const controller = new AbortController();
+  const events: string[] = [];
+  await expect(
+    superviseNativeV2Lease(
+      { ...request, signal: controller.signal },
+      async (context) => {
+        controller.abort();
+        await waitForAbort(context.signal);
+        events.push('stopped');
+        throw new NativeRunnerProcessFailure('cancelled');
+      },
+      renewWith([renewal(request.authority)], []),
+      stoppedClock(),
+      (stopped) => {
+        events.push('release');
+        expect(stopped).toEqual({
+          reason: 'WORKER_SHUTDOWN',
+          expectedRunRevision: 5,
+          remainingMilliseconds: 60_000,
+        });
+        return Promise.resolve();
+      },
+    ),
+  ).rejects.toMatchObject({ kind: 'cancelled' });
+  expect(events).toEqual(['stopped', 'release']);
+});
+
+test('does not claim release when process termination fails', async () => {
+  const request = await fixture();
+  let releases = 0;
+  const cancelled: NativeLeaseRenewal = {
+    ...renewal(request.authority, 6),
+    cancellationRequested: true,
+    stopBy: '2026-09-18T12:00:30Z',
+  };
+  const failure = await superviseNativeV2Lease(
+    request,
+    async (context) => {
+      await waitForAbort(context.signal);
+      throw new NativeRunnerProcessFailure('termination');
+    },
+    renewWith([renewal(request.authority), cancelled], []),
+    immediateFirstTickClock(),
+    () => {
+      releases++;
+      return Promise.resolve();
+    },
+  ).then(
+    () => undefined,
+    (error: unknown) => error,
+  );
+  expect(failure).toBeInstanceOf(AggregateError);
+  expect(releases).toBe(0);
+});
+
+test('preserves release failure alongside the cancellation interruption', async () => {
+  const request = await fixture();
+  const failure = await superviseNativeV2Lease(
+    request,
+    async (context) => {
+      await waitForAbort(context.signal);
+      throw new NativeRunnerProcessFailure('cancelled');
+    },
+    renewWith(
+      [
+        renewal(request.authority),
+        {
+          ...renewal(request.authority, 6),
+          cancellationRequested: true,
+          stopBy: '2026-09-18T12:00:30Z',
+        },
+      ],
+      [],
+    ),
+    immediateFirstTickClock(),
+    () => Promise.reject(new Error('release request failed')),
+  ).then(
+    () => undefined,
+    (error: unknown) => error,
+  );
+  expect(failure).toBeInstanceOf(AggregateError);
+  expect((failure as AggregateError).errors).toMatchObject([
+    { kind: 'server-cancelled' },
+    { message: 'release request failed' },
+  ]);
 });

@@ -15,6 +15,7 @@ import {
   executeNativeLocalAttempt,
   type NativeLocalExecutionRequest,
 } from './local-execution.js';
+import { releaseNativeLease } from './release.js';
 import { renewNativeLease } from './renewal.js';
 import { reportNativeTerminal } from './terminal.js';
 import type {
@@ -37,6 +38,7 @@ export interface NativeV2AttemptPorts {
   publish: typeof publishNativeV2Evidence;
   report: typeof reportNativeTerminal;
   renew: typeof renewNativeLease;
+  release: typeof releaseNativeLease;
 }
 
 export type NativeV2AttemptOutcome =
@@ -56,6 +58,7 @@ const defaultPorts: NativeV2AttemptPorts = {
   publish: publishNativeV2Evidence,
   report: reportNativeTerminal,
   renew: renewNativeLease,
+  release: releaseNativeLease,
 };
 
 type AttemptStage = 'preparing' | 'running' | 'capturing' | 'uploading';
@@ -153,6 +156,17 @@ export async function coordinateNativeV2Attempt(
     },
     ports.renew,
     clock,
+    (stopped) =>
+      ports.release({
+        controlPlaneOrigin: request.controlPlaneOrigin,
+        token: request.token,
+        authority: request.authority,
+        expectedRunRevision: stopped.expectedRunRevision,
+        reason: stopped.reason,
+        signal: AbortSignal.timeout(
+          Math.min(stopped.remainingMilliseconds, 5_000),
+        ),
+      }),
   );
 }
 

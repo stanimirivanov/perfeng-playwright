@@ -100,8 +100,9 @@ The Native Worker protocol already models presence, acquisition, renewal, artifa
 terminal reporting and release as focused operations. The execution loop remains intentionally
 unfinished. An internal supervisor maintains v2 lease authority and forward phases around one
 abort-aware operation. The v2 attempt coordinator now composes local execution, publication and
-terminal reporting within that supervision boundary. Acquisition, release and restart recovery are
-still absent. The complete worker loop should use an explicit transition model:
+terminal reporting within that supervision boundary. It also releases stopped cancellation and
+shutdown attempts while authority remains proven. Acquisition and restart recovery are still absent.
+The complete worker loop should use an explicit transition model:
 
 ```text
 unavailable -> qualified -> acquiring -> preparing -> running -> uploading -> finalizing -> terminal
@@ -137,7 +138,7 @@ The current structure follows the selected architecture:
 
 Two constraints should guide the next implementation steps:
 
-- complete Native Worker release, recovery and acquisition policy before enabling availability;
+- complete Native Worker recovery and acquisition policy before enabling availability;
 - split `src/native-worker/types.ts` by protocol responsibility only when the coordinator makes
   ownership clearer, not merely to reduce file length.
 
