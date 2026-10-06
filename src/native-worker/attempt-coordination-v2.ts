@@ -17,7 +17,11 @@ import {
 } from './local-execution.js';
 import { releaseNativeLease } from './release.js';
 import { renewNativeLease } from './renewal.js';
-import { reportNativeTerminal } from './terminal.js';
+import {
+  reportNativeTerminal,
+  TerminalReportFailure,
+  type TerminalReportRequest,
+} from './terminal.js';
 import type {
   NativeTerminalAcknowledgement,
   NativeTerminalFailure,
@@ -123,15 +127,18 @@ export async function coordinateNativeV2Attempt(
         const failure = terminalFailure(stage);
         let acknowledgement: NativeTerminalAcknowledgement;
         try {
-          acknowledgement = await ports.report({
-            controlPlaneOrigin: request.controlPlaneOrigin,
-            token: request.token,
-            authority: request.authority,
-            expectedRunRevision: lease.expectedRunRevision(),
-            kind: 'FAILED',
-            failure,
-            signal: lease.signal,
-          });
+          acknowledgement = await reportTerminalWithExactRetry(
+            {
+              controlPlaneOrigin: request.controlPlaneOrigin,
+              token: request.token,
+              authority: request.authority,
+              expectedRunRevision: lease.expectedRunRevision(),
+              kind: 'FAILED',
+              failure,
+              signal: lease.signal,
+            },
+            ports.report,
+          );
         } catch (reportError) {
           throw new AggregateError(
             [error, reportError],
@@ -143,15 +150,18 @@ export async function coordinateNativeV2Attempt(
       }
 
       assertActive(lease.signal);
-      const acknowledgement = await ports.report({
-        controlPlaneOrigin: request.controlPlaneOrigin,
-        token: request.token,
-        authority: request.authority,
-        expectedRunRevision: lease.expectedRunRevision(),
-        kind: 'COMPLETED',
-        manifest: evidence.manifest.reference,
-        signal: lease.signal,
-      });
+      const acknowledgement = await reportTerminalWithExactRetry(
+        {
+          controlPlaneOrigin: request.controlPlaneOrigin,
+          token: request.token,
+          authority: request.authority,
+          expectedRunRevision: lease.expectedRunRevision(),
+          kind: 'COMPLETED',
+          manifest: evidence.manifest.reference,
+          signal: lease.signal,
+        },
+        ports.report,
+      );
       return { kind: 'COMPLETED', evidence, acknowledgement };
     },
     ports.renew,
@@ -168,6 +178,28 @@ export async function coordinateNativeV2Attempt(
         ),
       }),
   );
+}
+
+/** Repeats one unchanged terminal claim only when the first response is uncertain. */
+async function reportTerminalWithExactRetry(
+  request: TerminalReportRequest,
+  report: typeof reportNativeTerminal,
+): Promise<NativeTerminalAcknowledgement> {
+  try {
+    return await report(request);
+  } catch (error) {
+    if (
+      !(error instanceof TerminalReportFailure) ||
+      error.kind !== 'retryable' ||
+      error.retryAfterSeconds !== undefined
+    ) {
+      throw error;
+    }
+    if (request.signal?.aborted) {
+      throw new NativeV2SupervisionFailure('cancelled', undefined, error);
+    }
+  }
+  return report(request);
 }
 
 function terminalFailure(stage: AttemptStage): NativeTerminalFailure {

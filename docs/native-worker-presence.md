@@ -288,6 +288,10 @@ It reports fixed stage-specific failure codes only while authority remains activ
 details are never copied into a terminal message. A cancelled or lost attempt makes no terminal
 claim. Terminal uncertainty and partial evidence are retained for explicit recovery; see
 [ADR-0005](decisions/0005-report-native-attempt-terminal-within-lease-supervision.md).
+An immediately retryable terminal response without `Retry-After` gets one identical retry under
+the same supervised lease. A conflict, lost authority, server-paced retry or second failure remains
+an explicit recovery case; see
+[ADR-0008](decisions/0008-retry-exact-native-terminal-claims-once.md).
 
 After server cancellation or worker shutdown, the supervisor offers release only once abort-aware
 work has settled and the lease still has time before its expiry or `stopBy` deadline. The coordinator
