@@ -25,6 +25,19 @@ export interface NativeRunnerProcessRequest {
   timeoutMilliseconds: number;
 }
 
+/** Rejects an invalid execution bound before attempt state is created. */
+export function validateNativeRunnerTimeout(timeoutMilliseconds: number): void {
+  if (
+    !Number.isSafeInteger(timeoutMilliseconds) ||
+    timeoutMilliseconds < 1 ||
+    timeoutMilliseconds > maximumExecutionMilliseconds
+  ) {
+    throw new Error(
+      'Native runner process timeout is outside supported bounds',
+    );
+  }
+}
+
 /**
  * Runs one reviewed runner command without a shell or inherited output streams.
  *
@@ -35,15 +48,7 @@ export interface NativeRunnerProcessRequest {
 export async function runNativeRunnerProcess(
   request: NativeRunnerProcessRequest,
 ): Promise<void> {
-  if (
-    !Number.isSafeInteger(request.timeoutMilliseconds) ||
-    request.timeoutMilliseconds < 1 ||
-    request.timeoutMilliseconds > maximumExecutionMilliseconds
-  ) {
-    throw new Error(
-      'Native runner process timeout is outside supported bounds',
-    );
-  }
+  validateNativeRunnerTimeout(request.timeoutMilliseconds);
   if (request.signal.aborted) {
     throw new NativeRunnerProcessFailure('cancelled');
   }

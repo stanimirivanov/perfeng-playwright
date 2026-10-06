@@ -2,24 +2,17 @@
 
 ## TL;DR
 
-- Run this command only from a clean, reviewed checkout in an interactive Windows session.
-- Put the non-secret endpoint, browser families, and environment evidence in the closed JSON
-  configuration; never put a token there or on the command line.
-- Supply the worker-audience token through `PERFENG_NATIVE_WORKER_TOKEN` for the process and use an
-  HTTPS control-plane origin.
-- Configuration version 1 reports to `/native-worker/v1/presence`; version 2 reports the smaller
-  baseline Chromium capability set to `/native-worker/v2/presence`.
-- Both versions always report `UNAVAILABLE`; neither can acquire or execute a Run yet.
-- The v2 acquisition transport is available for protocol composition and tests, but the CLI does
-  not invoke it; the v2 server acquisition and execution lifecycle remain separate work.
-- V2 renewal and release can preserve or relinquish an acquired v2 attempt, but they do not make
-  the presence-only worker runnable.
-- A supervised runner subprocess boundary is available, but the CLI does not invoke it and does
-  not advertise availability.
-- V2 attempt preparation can create exclusive local inputs and output destinations from an acquired
-  lease; it does not launch the runner or make the worker available.
-- Treat `authorizedToAcquire` as server policy, not proof that this heartbeat-only process is ready
-  to accept work.
+- Run presence from a clean, reviewed checkout in an interactive Windows session.
+- Keep the endpoint and environment evidence in closed non-secret JSON; supply the worker-audience
+  token through `PERFENG_NATIVE_WORKER_TOKEN` and use an HTTPS control-plane origin.
+- Version 1 reports to `/native-worker/v1/presence`; version 2 reports baseline Chromium capability
+  to `/native-worker/v2/presence`.
+- Both versions report `UNAVAILABLE`. Treat `authorizedToAcquire` as server policy, not proof of
+  execution readiness.
+- V2 acquisition, renewal, release, supervised execution, artifact validation and publication
+  boundaries are available for composition and tests; the CLI does not acquire or execute leases.
+- A single lifecycle coordinator must own authority loss, publication and terminal reporting before
+  the worker can advertise availability.
 
 The presence command is the first executable slice of the outbound native Windows agent selected
 by the Native Worker API architecture decision. It reports bounded capabilities and immutable
@@ -257,3 +250,14 @@ inputs. The worker rejects measurement plans above the 32 MiB local parser bound
 see [ADR-0003](decisions/0003-bound-native-measurement-parsing.md). Neither check proves that an
 untrusted local writer told the truth. Publication still belongs to a later lifecycle coordinator,
 and the server remains the authority for registered evidence.
+
+The local execution helper connects these boundaries without enabling work acquisition. It requires
+an acquired v2 lease, a source checkout matching that lease, a real `dist/cli.js` inside the checkout,
+an operator-owned spool root, an explicit runner environment and a bounded timeout. It invokes the
+current Node executable with only the prepared baseline arguments, supervises the process tree,
+then loads the validated measurements. The worker-audience token is refused in the child environment.
+Cancellation, timeout, nonzero exit or invalid output never produces publication inputs; the attempt
+directory and any committed files remain for inspection. The ignored `dist/cli.js` build output is
+not itself bound by the source-checkout digest, so operators must build it from the reviewed checkout.
+Lease renewal, authority loss, upload, terminal reporting, restart recovery and cleanup still need a
+single lifecycle coordinator before the worker may report `AVAILABLE`.
