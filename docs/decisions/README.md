@@ -87,3 +87,5 @@ How will assumptions and consequences be verified?
   — Accepted
 - [ADR-0003: Bound Native Worker measurement parsing](0003-bound-native-measurement-parsing.md)
   — Proposed
+- [ADR-0004: Fail closed on Native Worker lease-supervision failure](0004-fail-closed-native-lease-supervision.md)
+  — Proposed

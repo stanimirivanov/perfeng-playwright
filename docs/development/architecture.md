@@ -98,7 +98,9 @@ validated configuration -> browser -> context -> page -> warm-up -> measurement 
 
 The Native Worker protocol already models presence, acquisition, renewal, artifact publication,
 terminal reporting and release as focused operations. The execution loop remains intentionally
-unfinished. Its coordinator should use an explicit transition model:
+unfinished. An internal supervisor now maintains v2 lease authority and forward phases around one
+abort-aware operation, but it does not own acquisition, release or terminal reporting. The complete
+coordinator should use an explicit transition model:
 
 ```text
 unavailable -> qualified -> acquiring -> preparing -> running -> uploading -> finalizing -> terminal

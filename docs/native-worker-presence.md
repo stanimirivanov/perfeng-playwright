@@ -270,3 +270,12 @@ after local commitment, an explicit retry must reuse the original `createdAt` to
 bytes. Mismatched recovery state is preserved and rejected rather than replaced. The caller must
 keep renewal, cancellation and revision authority current throughout this operation; the future
 lifecycle coordinator owns that policy. No CLI work acquisition or external target is enabled here.
+
+The v2 lease supervisor can wrap an abort-aware attempt while it prepares, runs, uploads and
+finalizes. It renews immediately, then at the server-directed interval, exposes the latest accepted
+revision, and permits only forward phase transitions. Server cancellation, lost authority, expiry,
+shutdown or a renewal failure aborts the operation and waits for it to settle. It does not claim
+release or terminal completion, automatically retry renewal, or remove evidence; see
+[ADR-0004](decisions/0004-fail-closed-native-lease-supervision.md). The complete coordinator still
+needs to compose local execution, publication, release and terminal reporting before the CLI can
+acquire work.
