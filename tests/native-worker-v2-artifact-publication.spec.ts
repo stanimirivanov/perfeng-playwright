@@ -7,7 +7,10 @@ import { expect, test } from '@playwright/test';
 
 import { AcquiredNativeLease } from '../src/native-worker/acquisition.js';
 import { AcquiredNativeV2Lease } from '../src/native-worker/acquisition-v2.js';
-import { publishNativeArtifact } from '../src/native-worker/artifact-publication.js';
+import {
+  publishNativeArtifact,
+  type NativeArtifactPublicationRequest,
+} from '../src/native-worker/artifact-publication.js';
 import { registerNativeArtifact } from '../src/native-worker/artifact-registration.js';
 import {
   parseNativeExecutionRecipe,
@@ -21,6 +24,97 @@ const token = 'worker-secret';
 const capability = 'example-not-a-real-lease-capability-0001';
 const fixtureRoot = 'vendor/contracts/native-worker/v2/examples';
 const sha256 = 'f'.repeat(64);
+
+type RegistrationReply = () => Promise<Response>;
+
+async function publicationWithRegistrationReplies(
+  replies: RegistrationReply[],
+  expectedRunRevision: NativeArtifactPublicationRequest['expectedRunRevision'] = 5,
+) {
+  const directory = await mkdtemp(join(tmpdir(), 'perfeng-v2-registration-'));
+  const stages: string[] = [];
+  const registrationBodies: string[] = [];
+  try {
+    const content = Buffer.from('{"schema":"playwright-measurements/v2"}\n');
+    const path = join(directory, 'measurements.json');
+    await writeFile(path, content);
+    const digest = createHash('sha256').update(content).digest('hex');
+    const authority = await acquiredV2Lease();
+    const [grantText, artifactText] = await Promise.all([
+      readFile(`${fixtureRoot}/upload-grant.json`, 'utf8'),
+      readFile(`${fixtureRoot}/artifact.json`, 'utf8'),
+    ]);
+    const grant = JSON.parse(grantText) as Record<string, unknown>;
+    const artifact = JSON.parse(artifactText) as Record<string, unknown>;
+    const request: NativeArtifactPublicationRequest = {
+      controlPlaneOrigin,
+      token,
+      authority,
+      expectedRunRevision,
+      slot: 'measurements',
+      path,
+      size: content.byteLength,
+      sha256: digest,
+      mediaType: 'application/json',
+    };
+    const pendingReplies = [...replies];
+    try {
+      const result = await publishNativeArtifact(request, {
+        controlPlane: (input: URL | RequestInfo, init?: RequestInit) => {
+          const pathname = (input as URL).pathname;
+          expect(pathname).toMatch(/^\/native-worker\/v2\/leases\/[^/]+\//);
+          if (pathname.endsWith('/upload-grants')) {
+            stages.push('grant');
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  ...grant,
+                  sha256: digest,
+                  uploadHeaders: {
+                    'content-type': 'application/json',
+                    'x-amz-checksum-sha256': Buffer.from(
+                      digest,
+                      'hex',
+                    ).toString('base64'),
+                  },
+                }),
+                { status: 201 },
+              ),
+            );
+          }
+          stages.push('register');
+          registrationBodies.push(init?.body as string);
+          const reply = pendingReplies.shift();
+          if (reply === undefined) {
+            return Promise.reject(new Error('unexpected registration attempt'));
+          }
+          return reply().then((response) =>
+            response.status === 201
+              ? new Response(
+                  JSON.stringify({
+                    ...artifact,
+                    size: content.byteLength,
+                    sha256: digest,
+                  }),
+                  { status: 201 },
+                )
+              : response,
+          );
+        },
+        objectStore: (_input: URL | RequestInfo, init?: RequestInit) => {
+          stages.push('upload');
+          expect(init?.method).toBe('PUT');
+          return Promise.resolve(new Response(null, { status: 200 }));
+        },
+      });
+      return { result, stages, registrationBodies };
+    } catch (error) {
+      return { error, stages, registrationBodies };
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
 
 async function acquiredV2Lease(): Promise<AcquiredNativeV2Lease> {
   const [lease, presenceText] = await Promise.all([
@@ -214,6 +308,65 @@ test('publishes a v2 artifact through grant, exact upload and registration', asy
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+});
+
+test('retries only the exact v2 registration after a lost response', async () => {
+  let revisionReads = 0;
+  const attempt = await publicationWithRegistrationReplies(
+    [
+      () => Promise.reject(new Error('sensitive transport failure')),
+      () => Promise.resolve(new Response(null, { status: 201 })),
+    ],
+    () => {
+      revisionReads += 1;
+      return revisionReads === 1 ? 5 : 6;
+    },
+  );
+  expect(attempt.error).toBeUndefined();
+  expect(attempt.result).toMatchObject({ slot: 'measurements' });
+  expect(attempt.stages).toEqual(['grant', 'upload', 'register', 'register']);
+  expect(attempt.registrationBodies).toHaveLength(2);
+  expect(attempt.registrationBodies[1]).toBe(attempt.registrationBodies[0]);
+  expect(JSON.parse(attempt.registrationBodies[0] ?? '')).toMatchObject({
+    expectedRunRevision: 6,
+  });
+  expect(revisionReads).toBe(2);
+});
+
+test('does not immediately retry v2 registration when the server sets Retry-After', async () => {
+  const attempt = await publicationWithRegistrationReplies([
+    () =>
+      Promise.resolve(
+        new Response('sensitive server detail', {
+          status: 503,
+          headers: { 'retry-after': '12' },
+        }),
+      ),
+  ]);
+  expect(attempt.error).toMatchObject({
+    kind: 'retryable',
+    retryAfterSeconds: 12,
+  });
+  expect(String(attempt.error)).not.toContain('sensitive server detail');
+  expect(attempt.stages).toEqual(['grant', 'upload', 'register']);
+});
+
+test('does not retry a v2 registration conflict', async () => {
+  const attempt = await publicationWithRegistrationReplies([
+    () => Promise.resolve(new Response(null, { status: 409 })),
+  ]);
+  expect(attempt.error).toMatchObject({ kind: 'conflict' });
+  expect(attempt.stages).toEqual(['grant', 'upload', 'register']);
+});
+
+test('stops after a second uncertain v2 registration response without re-uploading', async () => {
+  const attempt = await publicationWithRegistrationReplies([
+    () => Promise.resolve(new Response(null, { status: 500 })),
+    () => Promise.resolve(new Response(null, { status: 500 })),
+  ]);
+  expect(attempt.error).toMatchObject({ kind: 'retryable' });
+  expect(attempt.stages).toEqual(['grant', 'upload', 'register', 'register']);
+  expect(attempt.registrationBodies[1]).toBe(attempt.registrationBodies[0]);
 });
 
 test('pins byte-identical v2 artifact-publication fixtures', async () => {

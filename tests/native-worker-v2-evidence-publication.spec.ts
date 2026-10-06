@@ -344,6 +344,9 @@ test('retains exact manifest bytes for an explicit retry after registration fail
   );
 
   await expect(publishNativeV2Evidence(request, transport)).rejects.toThrow();
+  expect(events.filter((stage) => stage === 'register:manifest')).toHaveLength(
+    2,
+  );
   const bytes = await readFile(request.prepared.manifestPath);
   const digest = createHash('sha256').update(bytes).digest('hex');
   failManifestRegistration = false;
@@ -352,6 +355,6 @@ test('retains exact manifest bytes for an explicit retry after registration fail
   expect(result.manifest.localArtifact.sha256).toBe(digest);
   expect(await readFile(request.prepared.manifestPath)).toEqual(bytes);
   expect(events.filter((stage) => stage === 'register:manifest')).toHaveLength(
-    2,
+    3,
   );
 });

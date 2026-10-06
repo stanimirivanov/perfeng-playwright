@@ -97,3 +97,5 @@ How will assumptions and consequences be verified?
   — Proposed
 - [ADR-0008: Retry exact Native Worker terminal claims once](0008-retry-exact-native-terminal-claims-once.md)
   — Proposed
+- [ADR-0009: Retry exact Native Worker artifact registration once](0009-retry-exact-native-artifact-registration-once.md)
+  — Proposed
