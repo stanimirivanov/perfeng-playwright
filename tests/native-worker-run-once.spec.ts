@@ -76,6 +76,7 @@ function ports(
   reports: ('AVAILABLE' | 'UNAVAILABLE')[],
 ): NativeRunOncePorts {
   return {
+    verifyReadiness: () => Promise.resolve(),
     reportPresence: ({ presence, token: credential }) => {
       expect(credential).toBe(token);
       reports.push(presence.availability);
@@ -137,6 +138,23 @@ test('parses an explicit one-shot command without accepting partial arguments', 
   expect(() =>
     parseWorkerCommand(['run-once', '--config', 'worker.json']),
   ).toThrow('Usage:');
+});
+
+test('fails before claiming the spool or reporting presence when readiness fails', async ({}, testInfo) => {
+  const root = testInfo.outputPath('spool');
+  await mkdir(root);
+  const { request, authority } = await fixture(root);
+  const reports: ('AVAILABLE' | 'UNAVAILABLE')[] = [];
+  const controlled = ports(authority, reports);
+  controlled.verifyReadiness = () =>
+    Promise.reject(
+      new Error('Native runner checkout no longer matches advertised evidence'),
+    );
+  await expect(runNativeWorkerOnce(request, controlled)).rejects.toThrow(
+    'no longer matches advertised evidence',
+  );
+  expect(reports).toEqual([]);
+  expect(await readdir(root)).toEqual([]);
 });
 
 test('offers one acquisition window and withdraws availability after an idle reply', async ({}, testInfo) => {

@@ -20,6 +20,7 @@ import {
   type NativeV2AttemptOutcome,
 } from './attempt-coordination.js';
 import { validateNativeRunnerTimeout } from './runner-process.js';
+import { validateNativeRunnerReadiness } from './readiness.js';
 import type { WorkerPresence, WorkerPresenceStatus } from './types.js';
 
 const ownerFileName = '.native-worker-owner';
@@ -37,6 +38,7 @@ export interface NativeRunOnceRequest {
 }
 
 export interface NativeRunOncePorts {
+  verifyReadiness: (request: NativeRunOnceRequest) => Promise<void>;
   reportPresence: (request: PresenceRequest) => Promise<WorkerPresenceStatus>;
   acquireLease: (
     request: NativeV2LeaseAcquisitionRequest,
@@ -57,6 +59,7 @@ export type NativeRunOnceResult =
     };
 
 const defaultPorts: NativeRunOncePorts = {
+  verifyReadiness: validateNativeRunnerReadiness,
   reportPresence: reportWorkerPresence,
   acquireLease: acquireNativeV2Lease,
   coordinateAttempt: coordinateNativeV2Attempt,
@@ -82,6 +85,8 @@ export async function runNativeWorkerOnce(
   ) {
     throw new Error('Runner environment must not include the worker token');
   }
+  assertNotCancelled(request.signal, 'startup');
+  await ports.verifyReadiness(request);
   assertNotCancelled(request.signal, 'startup');
   const owner = await claimEmptySpool(request.spoolRoot);
   let offered = false;

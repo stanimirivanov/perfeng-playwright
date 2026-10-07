@@ -73,7 +73,8 @@ qualification evidence to the Native Worker API. It supports presence checks, a
 cancellable heartbeat, and an explicit `run-once` command. Presence and heartbeat
 always report `UNAVAILABLE`. `run-once` briefly offers `AVAILABLE`, acquires at most
 one lease, withdraws availability, and coordinates that attempt. It requires an
-empty, dedicated spool and leaves uncertain state for manual reconciliation;
+empty, dedicated spool and checks the built runner and current checkout evidence
+before offering work. Uncertain state remains for manual reconciliation;
 there is no unattended worker daemon or automatic restart recovery.
 
 Configuration and exact operating instructions are in the

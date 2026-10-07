@@ -103,6 +103,11 @@ Windows host with the matching built checkout, installed Chromium, an authorized
 compatible v2 control plane and a dedicated empty spool outside the checkout. Provision the spool
 with operator-controlled Windows ACLs; Node mode bits do not provide Windows access control.
 The control-plane policy must approve the host evidence and the selected runner revision.
+Before reporting availability, the command rechecks that `dist/cli.js` is a regular local file,
+the checkout is clean and still matches the advertised repository, revision and lock checksum, and
+the spool resolves outside that checkout. A failed preflight makes no server request and creates no
+owner marker. This does not prove the ignored build output matches the committed source or that
+Chromium is installed; build from the reviewed checkout and verify the host separately.
 
 ```powershell
 pnpm build
