@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import { expect, test } from '@playwright/test';
 
@@ -12,11 +13,15 @@ test('constructs deterministic v2 raw-result bytes from the reviewed recipe', as
   const request = await nativeV2RawResultRequest();
   const recipe = request.authority.recipe;
   const manifest = createNativeRawResultManifest(request);
+  const lock = JSON.parse(
+    await readFile('vendor/contracts/lock.json', 'utf8'),
+  ) as { v2BundleVersion: string };
+  expect(manifest.contractsVersion).toBe(lock.v2BundleVersion);
 
   expect(manifest).toMatchObject({
     schemaVersion: 2,
     kind: 'RawResult',
-    contractsVersion: '0.18.0',
+    contractsVersion: '0.19.0',
     runId: recipe.runId,
     testId: recipe.configuration.testId,
     workload: {

@@ -14,7 +14,7 @@ import type {
 import type { NativeExecutionRecipe } from './execution-recipe.js';
 import { validateV2MeasurementIdentity } from './measurement-identity.js';
 
-const v2ContractsVersion = '0.18.0';
+const v2ContractsVersion = '0.19.0';
 const semanticVersionPattern =
   /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
 

@@ -77,7 +77,7 @@ execution loop can accept work.
 Configuration and exact operating instructions are in the
 [native worker presence guide](docs/native-worker-presence.md). The worker also provides a
 token-free, read-only `spool-status` command for operator inspection of retained attempt paths;
-it does not recover a lease. The client pins reviewed perfeng-contracts bundle 0.18.0
+it does not recover a lease. The client pins reviewed perfeng-contracts bundle 0.19.0
 for v2 presence, lease, artifact-publication and terminal fixtures. Configuration version 2
 reports baseline Chromium presence to `/native-worker/v2/presence`; it still reports
 `UNAVAILABLE`, never acquires work, and does not run a lease yet. A separate
@@ -90,7 +90,7 @@ credential from JSON or a command-line argument. Its raw-result path constructs
 deterministic `raw-result/v2` bytes from matching measurements, immutable
 execution provenance, and lease-fenced registered evidence. It persists the manifest
 exclusively and publishes it through the v2 grant, transfer, and registration boundary.
-Manifests identify the reviewed 0.18.0 contracts bundle.
+Manifests identify the reviewed 0.19.0 contracts bundle.
 The CLI still does not execute work or advance the Run.
 
 ## Semantic measurements
