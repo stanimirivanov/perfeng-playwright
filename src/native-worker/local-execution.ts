@@ -93,7 +93,10 @@ function assertNotCancelled(signal: AbortSignal): void {
   }
 }
 
-async function validateRunnerEntrypoint(checkoutRoot: string): Promise<string> {
+/** Requires the built runner entry point to be a regular file in a real checkout. */
+export async function validateRunnerEntrypoint(
+  checkoutRoot: string,
+): Promise<string> {
   if (!isAbsolute(checkoutRoot)) {
     throw new Error('Native runner checkout root must be absolute');
   }
