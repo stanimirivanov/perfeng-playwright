@@ -10,7 +10,7 @@ import {
 } from '../src/native-worker/execution-recipe.js';
 
 const leasePath = 'vendor/contracts/native-worker/v2/examples/lease.json';
-const presencePath = 'vendor/contracts/native-worker/v1/examples/presence.json';
+const presencePath = 'vendor/contracts/native-worker/v2/examples/presence.json';
 
 async function fixture(): Promise<{
   leaseText: string;
@@ -166,13 +166,8 @@ test('rejects stale host and runner evidence without exposing their values', asy
   }
 });
 
-test('rejects v1 leases and noncanonical baseline artifact plans', async () => {
+test('rejects noncanonical baseline artifact plans', async () => {
   const { leaseText, evidence } = await fixture();
-  const v1Lease = await readFile(
-    'vendor/contracts/native-worker/v1/examples/lease.json',
-    'utf8',
-  );
-  expect(() => parseNativeExecutionRecipe(v1Lease, evidence)).toThrow();
   const original = JSON.parse(leaseText) as {
     artifactPlan: Record<string, unknown>[];
   };

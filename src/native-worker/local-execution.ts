@@ -5,7 +5,7 @@ import {
   prepareNativeAttempt,
   type PreparedNativeAttempt,
 } from './attempt-preparation.js';
-import { AcquiredNativeV2Lease } from './acquisition-v2.js';
+import { AcquiredNativeV2Lease } from './acquisition.js';
 import {
   loadNativeV2Measurements,
   type ParsedNativeAttemptArtifacts,

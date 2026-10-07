@@ -4,7 +4,7 @@ import { basename, join } from 'node:path';
 import { exactKeys, integer, record } from '../configuration/primitives.js';
 import { inspectRegularFile } from '../filesystem/inspect-regular-file.js';
 import type { PlaywrightMeasurements } from '../journey/types.js';
-import { AcquiredNativeV2Lease } from './acquisition-v2.js';
+import { AcquiredNativeV2Lease } from './acquisition.js';
 import type { PreparedNativeAttempt } from './attempt-preparation.js';
 import { contractSha256, patternString } from './contract-values.js';
 import { maximumNativeMeasurementDocumentBytes } from './execution-recipe.js';

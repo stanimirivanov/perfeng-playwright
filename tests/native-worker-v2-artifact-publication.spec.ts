@@ -5,8 +5,7 @@ import { join } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
-import { AcquiredNativeLease } from '../src/native-worker/acquisition.js';
-import { AcquiredNativeV2Lease } from '../src/native-worker/acquisition-v2.js';
+import { AcquiredNativeV2Lease } from '../src/native-worker/acquisition.js';
 import {
   publishNativeArtifact,
   type NativeArtifactPublicationRequest,
@@ -16,7 +15,6 @@ import {
   parseNativeExecutionRecipe,
   type NativeWorkerQualificationEvidence,
 } from '../src/native-worker/execution-recipe.js';
-import { parseNativeLease } from '../src/native-worker/lease.js';
 import { createNativeUploadGrant } from '../src/native-worker/upload-grant.js';
 
 const controlPlaneOrigin = 'https://control-plane.perfeng.invalid';
@@ -202,25 +200,14 @@ test('uses v2 grant and registration endpoints with the same lease authority', a
   ]);
 });
 
-test('rejects a v1 grant under v2 authority before registration', async () => {
-  const v1Lease = new AcquiredNativeLease(
-    parseNativeLease(
-      await readFile(
-        'vendor/contracts/native-worker/v1/examples/lease.json',
-        'utf8',
-      ),
-    ),
-    capability,
-  );
-  const grantText = await readFile(
-    'vendor/contracts/native-worker/v1/examples/upload-grant.json',
-    'utf8',
-  );
+test('rejects a mismatched grant digest before registration', async () => {
+  const authority = await acquiredV2Lease();
+  const grantText = await readFile(`${fixtureRoot}/upload-grant.json`, 'utf8');
   const grant = await createNativeUploadGrant(
     {
       controlPlaneOrigin,
       token,
-      authority: v1Lease,
+      authority,
       expectedRunRevision: 5,
       slot: 'measurements',
       size: 4096,
@@ -229,17 +216,16 @@ test('rejects a v1 grant under v2 authority before registration', async () => {
     },
     () => Promise.resolve(new Response(grantText, { status: 201 })),
   );
-  expect(grant.protocolVersion).toBe(1);
   await expect(
     registerNativeArtifact(
       {
         controlPlaneOrigin,
         token,
-        authority: await acquiredV2Lease(),
+        authority,
         grant,
         expectedRunRevision: 5,
         size: 4096,
-        sha256,
+        sha256: 'a'.repeat(64),
       },
       () => Promise.reject(new Error('registration must not be sent')),
     ),

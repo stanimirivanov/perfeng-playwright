@@ -1,6 +1,5 @@
 import { integer, requiredString } from '../configuration/primitives.js';
-import type { AcquiredNativeLease } from './acquisition.js';
-import { AcquiredNativeV2Lease } from './acquisition-v2.js';
+import { AcquiredNativeV2Lease } from './acquisition.js';
 import { normalizeControlPlaneOrigin } from './configuration.js';
 import { enumMember } from './contract-values.js';
 import {
@@ -42,7 +41,7 @@ export class LeaseReleaseFailure extends Error {
 export interface LeaseReleaseRequest {
   controlPlaneOrigin: string;
   token: string;
-  authority: AcquiredNativeLease | AcquiredNativeV2Lease;
+  authority: AcquiredNativeV2Lease;
   expectedRunRevision: number;
   reason: NativeLeaseReleaseReason;
   message?: string;
@@ -68,11 +67,7 @@ export async function releaseNativeLease(
       ? timeout
       : AbortSignal.any([request.signal, timeout]);
   const authority = request.authority;
-  const v2 = authority instanceof AcquiredNativeV2Lease;
-  const lease =
-    authority instanceof AcquiredNativeV2Lease
-      ? authority.recipe
-      : authority.lease;
+  const lease = authority.recipe;
   const body: Record<string, unknown> = {
     attemptId: lease.attemptId,
     expectedRunRevision,
@@ -91,10 +86,7 @@ export async function releaseNativeLease(
   let response: Response;
   try {
     response = await send(
-      new URL(
-        `/native-worker/v${v2 ? '2' : '1'}/leases/${lease.leaseId}/release`,
-        origin,
-      ),
+      new URL(`/native-worker/v2/leases/${lease.leaseId}/release`, origin),
       {
         method: 'POST',
         redirect: 'error',

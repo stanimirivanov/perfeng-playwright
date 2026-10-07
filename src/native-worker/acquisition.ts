@@ -2,7 +2,11 @@ import { inspect } from 'node:util';
 
 import { integer } from '../configuration/primitives.js';
 import { normalizeControlPlaneOrigin } from './configuration.js';
-import { parseNativeLease } from './lease.js';
+import {
+  parseNativeExecutionRecipe,
+  type NativeExecutionRecipe,
+  type NativeWorkerQualificationEvidence,
+} from './execution-recipe.js';
 import {
   discardResponse,
   parseRetryAfter,
@@ -10,7 +14,6 @@ import {
   validateLeaseCapability,
   validateWorkerCredential,
 } from './transport.js';
-import type { NativeLease } from './types.js';
 
 export class LeaseAcquisitionFailure extends Error {
   readonly retryable: boolean;
@@ -26,36 +29,6 @@ export class LeaseAcquisitionFailure extends Error {
   }
 }
 
-export class AcquiredNativeLease {
-  readonly lease: NativeLease;
-  readonly #capability: string;
-
-  constructor(lease: NativeLease, capability: string) {
-    this.lease = lease;
-    this.#capability = capability;
-  }
-
-  useCapability<T>(operation: (capability: string) => T): T {
-    return operation(this.#capability);
-  }
-
-  toJSON(): NativeLease {
-    return this.lease;
-  }
-
-  toString(): string {
-    return `native lease ${this.lease.leaseId} for run ${this.lease.runId}`;
-  }
-
-  [inspect.custom](): string {
-    return this.toString();
-  }
-}
-
-export type LeaseAcquisition =
-  | { kind: 'idle'; retryAfterSeconds: number }
-  | { kind: 'acquired'; authority: AcquiredNativeLease };
-
 export interface LeaseAcquisitionRequest {
   controlPlaneOrigin: string;
   token: string;
@@ -63,10 +36,48 @@ export interface LeaseAcquisitionRequest {
   signal?: AbortSignal;
 }
 
-export async function acquireNativeLease(
-  request: LeaseAcquisitionRequest,
+/** V2 acquisition inputs, including the worker's current qualification evidence. */
+export interface NativeV2LeaseAcquisitionRequest extends LeaseAcquisitionRequest {
+  currentEvidence: NativeWorkerQualificationEvidence;
+}
+
+/** A validated v2 execution recipe paired with a non-serializable lease capability. */
+export class AcquiredNativeV2Lease {
+  readonly recipe: NativeExecutionRecipe;
+  readonly #capability: string;
+
+  constructor(recipe: NativeExecutionRecipe, capability: string) {
+    this.recipe = recipe;
+    this.#capability = capability;
+  }
+
+  useCapability<T>(operation: (capability: string) => T): T {
+    return operation(this.#capability);
+  }
+
+  toJSON(): NativeExecutionRecipe {
+    return this.recipe;
+  }
+
+  toString(): string {
+    return `native v2 lease ${this.recipe.leaseId} for run ${this.recipe.runId}`;
+  }
+
+  [inspect.custom](): string {
+    return this.toString();
+  }
+}
+
+/** Idle result or one lease validated against the worker's current evidence. */
+export type NativeV2LeaseAcquisition =
+  | { kind: 'idle'; retryAfterSeconds: number }
+  | { kind: 'acquired'; authority: AcquiredNativeV2Lease };
+
+/** Acquires a v2 lease without making the presence-only CLI runnable. */
+export async function acquireNativeV2Lease(
+  request: NativeV2LeaseAcquisitionRequest,
   send: typeof fetch = fetch,
-): Promise<LeaseAcquisition> {
+): Promise<NativeV2LeaseAcquisition> {
   validateWorkerCredential(request.token);
   const maxWaitSeconds = integer(request.maxWaitSeconds, 'maxWaitSeconds', 0);
   if (maxWaitSeconds > 30) {
@@ -86,16 +97,16 @@ export async function acquireNativeLease(
       authorization: `Bearer ${request.token}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ protocolVersion: 1, maxWaitSeconds }),
+    body: JSON.stringify({ protocolVersion: 2, maxWaitSeconds }),
     signal: requestSignal,
   };
 
   let response: Response;
   try {
-    response = await send(new URL('/native-worker/v1/leases', origin), options);
+    response = await send(new URL('/native-worker/v2/leases', origin), options);
   } catch {
     throw new LeaseAcquisitionFailure(
-      'Native worker lease acquisition request failed',
+      'Native worker v2 lease acquisition request failed',
       request.signal?.aborted !== true,
     );
   }
@@ -113,7 +124,7 @@ export async function acquireNativeLease(
         ? parseRetryAfter(response, false)
         : undefined;
     throw new LeaseAcquisitionFailure(
-      `Native worker lease acquisition was rejected with status ${String(response.status)}`,
+      `Native worker v2 lease acquisition was rejected with status ${String(response.status)}`,
       response.status === 429 ||
         response.status === 500 ||
         response.status === 503,
@@ -124,10 +135,13 @@ export async function acquireNativeLease(
   const capability = validateLeaseCapability(
     response.headers.get('x-perfeng-lease'),
   );
-  const lease = parseNativeLease(await readBoundedResponse(response));
+  const recipe = parseNativeExecutionRecipe(
+    await readBoundedResponse(response),
+    request.currentEvidence,
+  );
 
   return {
     kind: 'acquired',
-    authority: new AcquiredNativeLease(lease, capability),
+    authority: new AcquiredNativeV2Lease(recipe, capability),
   };
 }

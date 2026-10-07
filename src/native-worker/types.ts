@@ -2,8 +2,6 @@ import type { SourceCheckoutArtifact } from '../source-checkout.js';
 
 /** Host architectures accepted by the Native Worker contract. */
 export type WorkerArchitecture = 'x64' | 'arm64';
-/** Browser product families a Native Worker may advertise. */
-export type BrowserFamily = 'chromium' | 'chrome' | 'edge';
 /** Server-authoritative scheduling availability of a Native Worker. */
 export type WorkerAvailability = 'AVAILABLE' | 'DRAINING' | 'UNAVAILABLE';
 /** Qualification outcome for the reported environment and runner provenance. */
@@ -17,12 +15,11 @@ interface WorkerPresenceConfigurationFields {
   };
 }
 
-/** Version-selecting, non-secret configuration for one Native Worker presence endpoint. */
-export type WorkerPresenceConfiguration = WorkerPresenceConfigurationFields &
-  (
-    | { schemaVersion: 1; browsers: BrowserFamily[] }
-    | { schemaVersion: 2; browsers: ['chromium'] }
-  );
+/** Non-secret configuration for the Native Worker v2 presence endpoint. */
+export type WorkerPresenceConfiguration = WorkerPresenceConfigurationFields & {
+  schemaVersion: 2;
+  browsers: ['chromium'];
+};
 
 interface WorkerPresenceFields {
   agentVersion: string;
@@ -48,28 +45,16 @@ interface WorkerCapabilities {
   executionArtifacts: ['source-checkout'];
 }
 
-/** Closed presence document for the selected Native Worker protocol generation. */
-export type WorkerPresence = WorkerPresenceFields &
-  (
-    | {
-        protocolVersion: 1;
-        capabilities: WorkerCapabilities & {
-          browsers: BrowserFamily[];
-          runnerContract: 1;
-          artifactKinds: ['measurements', 'diagnostics'];
-          diagnosticModes: ['lightweight', 'trace', 'heap'];
-        };
-      }
-    | {
-        protocolVersion: 2;
-        capabilities: WorkerCapabilities & {
-          browsers: ['chromium'];
-          runnerContract: 2;
-          artifactKinds: ['measurements', 'manifest'];
-          diagnosticModes: ['baseline'];
-        };
-      }
-  );
+/** Closed Native Worker v2 presence document. */
+export type WorkerPresence = WorkerPresenceFields & {
+  protocolVersion: 2;
+  capabilities: WorkerCapabilities & {
+    browsers: ['chromium'];
+    runnerContract: 2;
+    artifactKinds: ['measurements', 'manifest'];
+    diagnosticModes: ['baseline'];
+  };
+};
 
 /** Server decision explaining whether the reported worker is qualified. */
 export interface QualificationDecision {
@@ -88,9 +73,6 @@ export interface WorkerPresenceStatus {
   authorizedToAcquire: boolean;
 }
 
-export type WorkerDiagnosticMode =
-  'lightweight' | 'trace' | 'heap' | 'cpu-profile';
-
 export type NativeExecutionArtifact =
   | {
       kind: 'source-checkout';
@@ -106,19 +88,6 @@ export type NativeExecutionArtifact =
       executableSha256: string;
     };
 
-export interface NativeExecutionAssignment {
-  catalogueTestId: string;
-  workloadId: string;
-  profile: string;
-  target: {
-    environmentId: string;
-    baseUrl: string;
-  };
-  browser: BrowserFamily;
-  diagnosticMode: WorkerDiagnosticMode;
-  executionArtifact: NativeExecutionArtifact;
-}
-
 export interface NativeArtifactPlanItem {
   slot: string;
   kind: string;
@@ -126,18 +95,6 @@ export interface NativeArtifactPlanItem {
   format: string;
   maximumBytes: number;
   required: boolean;
-}
-
-export interface NativeLease {
-  leaseId: string;
-  attemptId: string;
-  runId: string;
-  runRevision: number;
-  issuedAt: string;
-  expiresAt: string;
-  renewAfterSeconds: number;
-  assignment: NativeExecutionAssignment;
-  artifactPlan: NativeArtifactPlanItem[];
 }
 
 export type NativeExecutionPhase =

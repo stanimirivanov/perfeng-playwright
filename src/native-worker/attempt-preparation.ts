@@ -7,7 +7,7 @@ import {
   inspectSourceCheckout,
   type SourceCheckoutArtifact,
 } from '../source-checkout.js';
-import { AcquiredNativeV2Lease } from './acquisition-v2.js';
+import { AcquiredNativeV2Lease } from './acquisition.js';
 import { leaseUuid, patternString } from './contract-values.js';
 import type { NativeArtifactPlanItem } from './types.js';
 

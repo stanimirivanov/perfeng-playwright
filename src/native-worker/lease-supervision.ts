@@ -1,7 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { performance } from 'node:perf_hooks';
 
-import { AcquiredNativeV2Lease } from './acquisition-v2.js';
+import { AcquiredNativeV2Lease } from './acquisition.js';
 import { LeaseRenewalFailure, renewNativeLease } from './renewal.js';
 import type { NativeExecutionPhase, NativeLeaseRenewal } from './types.js';
 

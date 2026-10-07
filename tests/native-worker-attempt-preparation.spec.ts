@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 
 import { parseCommand } from '../src/cli.js';
 import { readRunnerConfiguration } from '../src/configuration/read.js';
-import { AcquiredNativeV2Lease } from '../src/native-worker/acquisition-v2.js';
+import { AcquiredNativeV2Lease } from '../src/native-worker/acquisition.js';
 import { prepareNativeAttempt } from '../src/native-worker/attempt-preparation.js';
 import {
   parseNativeExecutionRecipe,
@@ -22,7 +22,7 @@ async function assignedAttempt(): Promise<{
   const [leaseText, presenceText] = await Promise.all([
     readFile('vendor/contracts/native-worker/v2/examples/lease.json', 'utf8'),
     readFile(
-      'vendor/contracts/native-worker/v1/examples/presence.json',
+      'vendor/contracts/native-worker/v2/examples/presence.json',
       'utf8',
     ),
   ]);

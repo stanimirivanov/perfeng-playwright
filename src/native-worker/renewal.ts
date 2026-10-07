@@ -4,8 +4,7 @@ import {
   integer,
   record,
 } from '../configuration/primitives.js';
-import type { AcquiredNativeLease } from './acquisition.js';
-import { AcquiredNativeV2Lease } from './acquisition-v2.js';
+import { AcquiredNativeV2Lease } from './acquisition.js';
 import { normalizeControlPlaneOrigin } from './configuration.js';
 import {
   boundedInteger,
@@ -54,7 +53,7 @@ export class LeaseRenewalFailure extends Error {
 export interface LeaseRenewalRequest {
   controlPlaneOrigin: string;
   token: string;
-  authority: AcquiredNativeLease | AcquiredNativeV2Lease;
+  authority: AcquiredNativeV2Lease;
   expectedRunRevision: number;
   phase: NativeExecutionPhase;
   signal?: AbortSignal;
@@ -78,11 +77,7 @@ export async function renewNativeLease(
       ? timeout
       : AbortSignal.any([request.signal, timeout]);
   const authority = request.authority;
-  const v2 = authority instanceof AcquiredNativeV2Lease;
-  const lease =
-    authority instanceof AcquiredNativeV2Lease
-      ? authority.recipe
-      : authority.lease;
+  const lease = authority.recipe;
   const body = {
     attemptId: lease.attemptId,
     expectedRunRevision,
@@ -98,10 +93,7 @@ export async function renewNativeLease(
   let response: Response;
   try {
     response = await send(
-      new URL(
-        `/native-worker/v${v2 ? '2' : '1'}/leases/${lease.leaseId}/renew`,
-        origin,
-      ),
+      new URL(`/native-worker/v2/leases/${lease.leaseId}/renew`, origin),
       {
         method: 'POST',
         redirect: 'error',

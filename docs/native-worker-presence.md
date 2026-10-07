@@ -5,9 +5,8 @@
 - Run presence from a clean, reviewed checkout in an interactive Windows session.
 - Keep the endpoint and environment evidence in closed non-secret JSON; supply the worker-audience
   token through `PERFENG_NATIVE_WORKER_TOKEN` and use an HTTPS control-plane origin.
-- Version 1 reports to `/native-worker/v1/presence`; version 2 reports baseline Chromium capability
-  to `/native-worker/v2/presence`.
-- Both versions report `UNAVAILABLE`. Treat `authorizedToAcquire` as server policy, not proof of
+- The worker reports baseline Chromium capability to `/native-worker/v2/presence` only.
+- Presence reports `UNAVAILABLE`. Treat `authorizedToAcquire` as server policy, not proof of
   execution readiness.
 - V2 acquisition, renewal, release, supervised execution, artifact validation and publication
   boundaries are available for composition and tests; the CLI does not acquire or execute leases.
@@ -23,15 +22,14 @@ Kubernetes or object-store credentials.
 
 ## Configuration
 
-Copy the [v1 example](../examples/native-worker-presence.json) or
-[v2 example](../examples/native-worker-v2-presence.json) outside the source checkout if local
-values differ. Both closed documents contain only non-secret values; the v1 document is:
+Copy the [example](../examples/native-worker-presence.json) outside the source checkout if local
+values differ. The closed document contains only non-secret values:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "controlPlaneOrigin": "https://control-plane.perfeng.invalid",
-  "browsers": ["edge", "chromium"],
+  "browsers": ["chromium"],
   "environment": {
     "id": "windows-mainstream",
     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -39,10 +37,8 @@ values differ. Both closed documents contain only non-secret values; the v1 docu
 }
 ```
 
-For v2, set `schemaVersion` to `2` and `browsers` to exactly `["chromium"]`. Do not
-add Edge or Chrome: the reviewed v2 contract currently accepts baseline Chromium only.
-The version selects both the protocol document and the endpoint. Existing v1 configuration
-continues to send the original v1 capabilities and is not silently upgraded.
+Only `schemaVersion: 2` and `browsers: ["chromium"]` are accepted. Existing v1
+configuration must be replaced explicitly; it is not silently upgraded.
 
 `controlPlaneOrigin` must be an HTTPS origin without credentials, a path, query, or fragment. The
 environment identity and digest must name the separately captured and server-approved
@@ -55,8 +51,8 @@ The command derives these values instead of accepting them from configuration:
 - capacity one and the Playwright tool identity;
 - source repository, exact Git revision, `pnpm-lock.yaml` path, and lock checksum from a clean
   checkout;
-- the package version and Native Worker protocol generation; and
-- the version-specific artifact and diagnostic capability identifiers from the reviewed contract.
+- the package version and Native Worker v2 protocol identity; and
+- the baseline artifact and diagnostic capability identifiers from the reviewed contract.
 
 Dirty source, an unsupported platform or architecture, invalid evidence, an unsafe origin, or an
 unknown configuration field fails before an HTTP request is made.
@@ -108,9 +104,8 @@ register artifacts, or report a terminal outcome. Those operations require later
 Do not reinterpret a running heartbeat as a ready worker; `authorizedToAcquire` remains server
 policy and the process deliberately does not act on it.
 
-The vendored v1 presence examples and lock under `vendor/contracts` pin byte-identical fixtures from
-perfeng-contracts bundle 0.17.0; the v2 presence examples pin bundle 0.18.0. The lock records both
-reviewed full OpenAPI checksums. Updating either API requires an explicit contract repin and
+The vendored presence examples and lock under `vendor/contracts` pin byte-identical v2 fixtures from
+perfeng-contracts bundle 0.18.0. The lock records its reviewed full OpenAPI checksum. Updating the API requires an explicit contract repin and
 compatibility review rather than accepting a moving schema.
 
 The same lock pins the Native Worker v2 acquisition and lease examples. The pure v2 recipe parser
@@ -133,17 +128,15 @@ from a `204` idle response, validates the complete assignment and artifact plan,
 `X-Perfeng-Lease` capability out of JSON and diagnostic inspection. Each long-poll request is
 bounded to the requested server wait plus five seconds.
 
-Renewal and release accept either v1 or v2 acquired authority. The authority selects the matching
-versioned endpoint; the attempt ID, expected Run revision and opaque lease capability remain bound
+Renewal and release accept acquired v2 authority. The attempt ID, expected Run revision and opaque lease capability remain bound
 to that same authority. V2 renewal validates the returned lease and attempt fence and cancellation
 deadline; v2 release accepts only a `204` acknowledgement. Neither operation is called by the CLI.
-Upload-grant and artifact-registration transports now accept v1 or v2 authority and use the
-corresponding versioned endpoints. A grant carries its acquisition generation outside its JSON
-body; registration refuses a grant from the other generation before any network call. The
-terminal transport also accepts v1 or v2 authority, posts to the corresponding endpoint and
+Upload-grant and artifact-registration transports accept v2 authority and use the
+v2 endpoints. Registration refuses a mismatched grant before any network call. The
+terminal transport accepts v2 authority, posts to the v2 endpoint and
 checks the acknowledgement against the acquired attempt and expected Run revision. Raw-result
 construction and manifest publication also accept v2 authority: the builder checks measurements
-against the complete v2 recipe and uses the reviewed 0.18.0 bundle identity; v1 keeps 0.17.0.
+against the complete v2 recipe and uses the reviewed 0.18.0 bundle identity.
 The worker rejects prerelease workload and environment-profile versions before execution because
 the current measurement and raw-result schemas permit only `major.minor.patch` values.
 The control plane's Run policy and runtime contracts version must also accept 0.18.0 before v2
@@ -171,7 +164,7 @@ authority, a retryably uncertain grant response without `Retry-After` triggers o
 replay of the same revision-fenced declaration before any transfer. The control plane may return
 fresh signed delivery material for the same reservation; the worker uses only the accepted grant.
 Conflict, lost authority, cancellation, server pacing or a second failure stops publication
-without sending object bytes. V1 grants remain single-shot. A concurrent lease renewal can make
+without sending object bytes. A concurrent lease renewal can make
 the frozen revision stale; an unresolved grant does not prove no reservation was created. See
 [ADR-0010](decisions/0010-retry-exact-native-upload-grant-once.md).
 
@@ -196,7 +189,7 @@ retries object transfer implicitly. Under v2 authority, a retryably uncertain
 registration response without `Retry-After` triggers one immediate retry of the exact grant and
 revision-fenced registration request; it never repeats the object `PUT`. A conflict, lost authority,
 cancellation, server-paced response or second failure remains unresolved for explicit recovery.
-Under v1 authority, registration is sent once. If transfer succeeds but registration remains
+If transfer succeeds but registration remains
 unresolved, the object stays non-authoritative and attempt-scoped. A lease renewal between v2
 registration attempts may cause the server to reject the frozen revision, so an unresolved outcome
 must not be treated as proof that the first registration failed. The worker receives no permission
