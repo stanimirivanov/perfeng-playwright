@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 import { expect, test } from '@playwright/test';
 
-import { AcquiredNativeV2Lease } from '../src/native-worker/acquisition-v2.js';
+import { AcquiredNativeV2Lease } from '../src/native-worker/acquisition.js';
 import {
   parseNativeExecutionRecipe,
   type NativeWorkerQualificationEvidence,

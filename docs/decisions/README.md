@@ -84,7 +84,7 @@ How will assumptions and consequences be verified?
 - [ADR-0001: Publish artifacts with receipt-last commitment](0001-publish-artifacts-with-receipt-last-commitment.md)
   — Accepted
 - [ADR-0002: Select Native Worker presence generation explicitly](0002-select-native-worker-presence-generation-explicitly.md)
-  — Accepted
+  — Superseded by ADR-0011
 - [ADR-0003: Bound Native Worker measurement parsing](0003-bound-native-measurement-parsing.md)
   — Proposed
 - [ADR-0004: Fail closed on Native Worker lease-supervision failure](0004-fail-closed-native-lease-supervision.md)
@@ -101,3 +101,5 @@ How will assumptions and consequences be verified?
   — Proposed
 - [ADR-0010: Retry exact Native Worker upload grant once](0010-retry-exact-native-upload-grant-once.md)
   — Proposed
+- [ADR-0011: Retire Native Worker v1 from the Playwright worker](0011-retire-native-worker-v1.md)
+  — Accepted; supersedes ADR-0002

@@ -5,16 +5,11 @@ import {
   record,
   requiredString,
 } from '../configuration/primitives.js';
-import type { BrowserFamily, WorkerPresenceConfiguration } from './types.js';
+import type { WorkerPresenceConfiguration } from './types.js';
 
 const maximumConfigurationBytes = 64 * 1024;
 const identifierPattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const sha256Pattern = /^[a-f0-9]{64}$/;
-const supportedBrowsers = new Set<BrowserFamily>([
-  'chromium',
-  'chrome',
-  'edge',
-]);
 
 export function parseWorkerPresenceConfiguration(
   text: string,
@@ -33,7 +28,7 @@ export function parseWorkerPresenceConfiguration(
     'browsers',
     'environment',
   ]);
-  if (source.schemaVersion !== 1 && source.schemaVersion !== 2) {
+  if (source.schemaVersion !== 2) {
     throw new Error('Unsupported worker presence configuration schemaVersion');
   }
 
@@ -54,25 +49,18 @@ export function parseWorkerPresenceConfiguration(
   const controlPlaneOrigin = normalizeControlPlaneOrigin(
     source.controlPlaneOrigin,
   );
-  const browsers = parseBrowsers(source.browsers);
-  const environmentEvidence = { id: environmentId, sha256: environmentSha256 };
-  if (source.schemaVersion === 2) {
-    if (browsers.length !== 1 || browsers[0] !== 'chromium') {
-      throw new Error('Version 2 presence requires only chromium');
-    }
-    return {
-      schemaVersion: 2,
-      controlPlaneOrigin,
-      browsers: ['chromium'],
-      environment: environmentEvidence,
-    };
+  if (
+    !Array.isArray(source.browsers) ||
+    source.browsers.length !== 1 ||
+    source.browsers[0] !== 'chromium'
+  ) {
+    throw new Error('Native Worker presence requires only chromium');
   }
-
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     controlPlaneOrigin,
-    browsers,
-    environment: environmentEvidence,
+    browsers: ['chromium'],
+    environment: { id: environmentId, sha256: environmentSha256 },
   };
 }
 
@@ -114,25 +102,4 @@ export function normalizeControlPlaneOrigin(value: unknown): string {
   }
 
   return parsed.origin;
-}
-
-function parseBrowsers(value: unknown): BrowserFamily[] {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 4) {
-    throw new Error('browsers must contain one through four browser families');
-  }
-  const browsers: BrowserFamily[] = [];
-  const seen = new Set<string>();
-  for (const browser of value) {
-    if (
-      typeof browser !== 'string' ||
-      !supportedBrowsers.has(browser as BrowserFamily) ||
-      seen.has(browser)
-    ) {
-      throw new Error('browsers contains an unsupported or duplicate family');
-    }
-    seen.add(browser);
-    browsers.push(browser as BrowserFamily);
-  }
-
-  return browsers;
 }

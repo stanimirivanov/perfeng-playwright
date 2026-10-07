@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 
-import type { AcquiredNativeV2Lease } from '../src/native-worker/acquisition-v2.js';
+import type { AcquiredNativeV2Lease } from '../src/native-worker/acquisition.js';
 import {
   superviseNativeV2Lease,
   NativeV2SupervisionFailure,
   type NativeV2SupervisionClock,
   type NativeV2LeaseSupervisionRequest,
-} from '../src/native-worker/lease-supervision-v2.js';
+} from '../src/native-worker/lease-supervision.js';
 import {
   LeaseRenewalFailure,
   renewNativeLease,

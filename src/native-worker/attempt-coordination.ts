@@ -1,4 +1,4 @@
-import { AcquiredNativeV2Lease } from './acquisition-v2.js';
+import { AcquiredNativeV2Lease } from './acquisition.js';
 import { ArtifactRegistrationFailure } from './artifact-registration.js';
 import { NativeArtifactUploadFailure } from './artifact-upload.js';
 import {
@@ -10,7 +10,7 @@ import {
   NativeV2SupervisionFailure,
   superviseNativeV2Lease,
   type NativeV2SupervisionClock,
-} from './lease-supervision-v2.js';
+} from './lease-supervision.js';
 import {
   executeNativeLocalAttempt,
   type NativeLocalExecutionRequest,

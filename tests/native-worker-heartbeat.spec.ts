@@ -11,7 +11,7 @@ import type {
 } from '../src/native-worker/types.js';
 
 const workerPresence: WorkerPresence = {
-  protocolVersion: 1,
+  protocolVersion: 2,
   agentVersion: '0.13.0',
   availability: 'UNAVAILABLE',
   capabilities: {
@@ -19,11 +19,11 @@ const workerPresence: WorkerPresence = {
     tool: 'playwright',
     operatingSystem: 'windows',
     architecture: 'x64',
-    browsers: ['edge'],
-    runnerContract: 1,
+    browsers: ['chromium'],
+    runnerContract: 2,
     executionArtifacts: ['source-checkout'],
-    artifactKinds: ['measurements', 'diagnostics'],
-    diagnosticModes: ['lightweight', 'trace', 'heap'],
+    artifactKinds: ['measurements', 'manifest'],
+    diagnosticModes: ['baseline'],
   },
   qualificationEvidence: {
     environmentId: 'windows-mainstream',

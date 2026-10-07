@@ -29,28 +29,8 @@ export function createWorkerPresence(inputs: PresenceInputs): WorkerPresence {
     },
   };
 
-  if (configuration.schemaVersion === 2) {
-    return {
-      protocolVersion: 2,
-      agentVersion: inputs.agentVersion,
-      availability: 'UNAVAILABLE',
-      capabilities: {
-        capacity: 1,
-        tool: 'playwright',
-        operatingSystem: 'windows',
-        architecture,
-        browsers: ['chromium'],
-        runnerContract: 2,
-        executionArtifacts: ['source-checkout'],
-        artifactKinds: ['measurements', 'manifest'],
-        diagnosticModes: ['baseline'],
-      },
-      qualificationEvidence,
-    };
-  }
-
   return {
-    protocolVersion: 1,
+    protocolVersion: 2,
     agentVersion: inputs.agentVersion,
     availability: 'UNAVAILABLE',
     capabilities: {
@@ -58,11 +38,11 @@ export function createWorkerPresence(inputs: PresenceInputs): WorkerPresence {
       tool: 'playwright',
       operatingSystem: 'windows',
       architecture,
-      browsers: [...configuration.browsers],
-      runnerContract: 1,
+      browsers: ['chromium'],
+      runnerContract: 2,
       executionArtifacts: ['source-checkout'],
-      artifactKinds: ['measurements', 'diagnostics'],
-      diagnosticModes: ['lightweight', 'trace', 'heap'],
+      artifactKinds: ['measurements', 'manifest'],
+      diagnosticModes: ['baseline'],
     },
     qualificationEvidence,
   };

@@ -1,5 +1,4 @@
-import type { AcquiredNativeLease } from './acquisition.js';
-import { AcquiredNativeV2Lease } from './acquisition-v2.js';
+import { AcquiredNativeV2Lease } from './acquisition.js';
 import {
   ArtifactRegistrationFailure,
   registerNativeArtifact,
@@ -17,7 +16,7 @@ import {
 export interface NativeArtifactPublicationRequest {
   controlPlaneOrigin: string;
   token: string;
-  authority: AcquiredNativeLease | AcquiredNativeV2Lease;
+  authority: AcquiredNativeV2Lease;
   expectedRunRevision: NativeRevisionSource;
   slot: string;
   path: string;
@@ -61,13 +60,10 @@ export async function publishNativeArtifact(
     mediaType: request.mediaType,
     ...cancellation,
   };
-  const grant =
-    request.authority instanceof AcquiredNativeV2Lease
-      ? await createNativeV2UploadGrantWithExactRetry(
-          grantRequest,
-          transport.controlPlane,
-        )
-      : await createNativeUploadGrant(grantRequest, transport.controlPlane);
+  const grant = await createNativeV2UploadGrantWithExactRetry(
+    grantRequest,
+    transport.controlPlane,
+  );
 
   await uploadNativeArtifact(
     {
@@ -91,9 +87,6 @@ export async function publishNativeArtifact(
     sha256: request.sha256,
     ...cancellation,
   };
-  if (!(request.authority instanceof AcquiredNativeV2Lease)) {
-    return registerNativeArtifact(registration, transport.controlPlane);
-  }
   return registerNativeV2ArtifactWithExactRetry(
     registration,
     transport.controlPlane,

@@ -1,5 +1,5 @@
 import type { PreparedNativeAttempt } from './attempt-preparation.js';
-import { AcquiredNativeV2Lease } from './acquisition-v2.js';
+import { AcquiredNativeV2Lease } from './acquisition.js';
 import {
   publishNativeArtifact,
   type NativeArtifactPublicationTransport,

@@ -1,6 +1,5 @@
 import { exactKeys, integer, record } from '../configuration/primitives.js';
-import type { AcquiredNativeLease } from './acquisition.js';
-import { AcquiredNativeV2Lease } from './acquisition-v2.js';
+import { AcquiredNativeV2Lease } from './acquisition.js';
 import { normalizeControlPlaneOrigin } from './configuration.js';
 import {
   boundedInteger,
@@ -48,7 +47,7 @@ export class ArtifactRegistrationFailure extends Error {
 export interface ArtifactRegistrationRequest {
   controlPlaneOrigin: string;
   token: string;
-  authority: AcquiredNativeLease | AcquiredNativeV2Lease;
+  authority: AcquiredNativeV2Lease;
   grant: AcquiredNativeUploadGrant;
   expectedRunRevision: number;
   size: number;
@@ -76,11 +75,7 @@ export async function registerNativeArtifact(
     request.signal === undefined
       ? timeout
       : AbortSignal.any([request.signal, timeout]);
-  const v2 = request.authority instanceof AcquiredNativeV2Lease;
-  const lease =
-    request.authority instanceof AcquiredNativeV2Lease
-      ? request.authority.recipe
-      : request.authority.lease;
+  const lease = request.authority.recipe;
   const grant = request.grant.grant;
   const body = {
     attemptId: lease.attemptId,
@@ -100,10 +95,7 @@ export async function registerNativeArtifact(
   let response: Response;
   try {
     response = await send(
-      new URL(
-        `/native-worker/v${v2 ? '2' : '1'}/leases/${lease.leaseId}/artifacts`,
-        origin,
-      ),
+      new URL(`/native-worker/v2/leases/${lease.leaseId}/artifacts`, origin),
       {
         method: 'POST',
         redirect: 'error',
@@ -140,18 +132,13 @@ function artifactDeclaration(
   );
   const size = boundedInteger(request.size, 'size', 1, maximumArtifactBytes);
   const sha256 = contractSha256(request.sha256, 'sha256');
-  const v2 = request.authority instanceof AcquiredNativeV2Lease;
-  const lease =
-    request.authority instanceof AcquiredNativeV2Lease
-      ? request.authority.recipe
-      : request.authority.lease;
+  const lease = request.authority.recipe;
   const grant = request.grant.grant;
   const plan = lease.artifactPlan.find((item) => item.slot === grant.slot);
   if (plan === undefined) {
     throw new Error('Artifact registration does not match its lease and grant');
   }
   if (
-    request.grant.protocolVersion !== (v2 ? 2 : 1) ||
     grant.leaseId !== lease.leaseId ||
     grant.attemptId !== lease.attemptId ||
     grant.runId !== lease.runId ||
@@ -207,10 +194,7 @@ function parseArtifactReference(
     mediaType: patternString(source.mediaType, 'mediaType', mediaTypePattern),
     registeredAt: contractTimestamp(source.registeredAt, 'registeredAt'),
   };
-  const lease =
-    request.authority instanceof AcquiredNativeV2Lease
-      ? request.authority.recipe
-      : request.authority.lease;
+  const lease = request.authority.recipe;
   const grant = request.grant.grant;
   const expectedUriPath = `/${grant.objectKey}`;
   const uri = new URL(reference.uri);

@@ -1,6 +1,5 @@
 import type { PlaywrightMeasurements } from '../journey/types.js';
-import type { AcquiredNativeLease } from './acquisition.js';
-import { AcquiredNativeV2Lease } from './acquisition-v2.js';
+import { AcquiredNativeV2Lease } from './acquisition.js';
 import {
   contractSha256,
   contractTimestamp,
@@ -11,12 +10,10 @@ import type {
   NativeArtifactPlanItem,
   NativeArtifactReference,
   NativeExecutionArtifact,
-  NativeLease,
 } from './types.js';
 import type { NativeExecutionRecipe } from './execution-recipe.js';
 import { validateV2MeasurementIdentity } from './measurement-identity.js';
 
-const v1ContractsVersion = '0.17.0';
 const v2ContractsVersion = '0.18.0';
 const semanticVersionPattern =
   /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
@@ -52,7 +49,7 @@ export type NativeRawResultExecutionArtifact =
 export interface NativeRawResultManifest {
   schemaVersion: 2;
   kind: 'RawResult';
-  contractsVersion: typeof v1ContractsVersion | typeof v2ContractsVersion;
+  contractsVersion: typeof v2ContractsVersion;
   runId: string;
   testId: string;
   workload: {
@@ -74,7 +71,7 @@ export interface NativeRawResultManifest {
 }
 
 export interface NativeRawResultRequest {
-  authority: AcquiredNativeLease | AcquiredNativeV2Lease;
+  authority: AcquiredNativeV2Lease;
   measurements: PlaywrightMeasurements;
   registeredArtifacts: readonly NativeArtifactReference[];
   createdAt: string;
@@ -117,10 +114,7 @@ export function createNativeRawResultManifest(
   return {
     schemaVersion: 2,
     kind: 'RawResult',
-    contractsVersion:
-      request.authority instanceof AcquiredNativeV2Lease
-        ? v2ContractsVersion
-        : v1ContractsVersion,
+    contractsVersion: v2ContractsVersion,
     runId: lease.runId,
     testId: request.measurements.testId,
     workload: {
@@ -143,9 +137,7 @@ export function createNativeRawResultManifest(
         semanticVersionPattern,
       ),
       artifact: resultExecutionArtifact(
-        request.authority instanceof AcquiredNativeV2Lease
-          ? request.authority.recipe.executionArtifact
-          : request.authority.lease.assignment.executionArtifact,
+        request.authority.recipe.executionArtifact,
       ),
     },
     measurementWindow: { ...request.measurements.measurementWindow },
@@ -173,23 +165,7 @@ export function serializeNativeRawResultManifest(
 }
 
 function validateMeasurementIdentity(request: NativeRawResultRequest): void {
-  if (request.authority instanceof AcquiredNativeV2Lease) {
-    validateV2MeasurementIdentity(
-      request.authority.recipe,
-      request.measurements,
-    );
-    return;
-  }
-  const lease = request.authority.lease;
-  const measurements = request.measurements;
-  if (
-    measurements.runId !== lease.runId ||
-    measurements.testId !== lease.assignment.catalogueTestId ||
-    measurements.workload.id !== lease.assignment.workloadId ||
-    measurements.workload.profile !== lease.assignment.profile
-  ) {
-    throw new Error('Measurements do not match the native lease assignment');
-  }
+  validateV2MeasurementIdentity(request.authority.recipe, request.measurements);
 }
 
 function validateTimeline(
@@ -319,9 +295,7 @@ function resultExecutionArtifact(
 }
 
 function authorityLease(
-  authority: AcquiredNativeLease | AcquiredNativeV2Lease,
-): NativeLease | NativeExecutionRecipe {
-  return authority instanceof AcquiredNativeV2Lease
-    ? authority.recipe
-    : authority.lease;
+  authority: AcquiredNativeV2Lease,
+): NativeExecutionRecipe {
+  return authority.recipe;
 }

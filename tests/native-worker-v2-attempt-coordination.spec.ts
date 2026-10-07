@@ -7,9 +7,9 @@ import {
   coordinateNativeV2Attempt,
   type NativeV2AttemptPorts,
   type NativeV2AttemptRequest,
-} from '../src/native-worker/attempt-coordination-v2.js';
+} from '../src/native-worker/attempt-coordination.js';
 import type { NativeLocalExecutionResult } from '../src/native-worker/local-execution.js';
-import type { NativeV2SupervisionClock } from '../src/native-worker/lease-supervision-v2.js';
+import type { NativeV2SupervisionClock } from '../src/native-worker/lease-supervision.js';
 import { NativeRunnerProcessFailure } from '../src/native-worker/runner-process.js';
 import { LeaseRenewalFailure } from '../src/native-worker/renewal.js';
 import { TerminalReportFailure } from '../src/native-worker/terminal.js';

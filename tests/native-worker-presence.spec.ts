@@ -18,19 +18,13 @@ import type { SourceCheckoutArtifact } from '../src/source-checkout.js';
 import { parseWorkerCommand, workerMain } from '../src/worker-cli.js';
 
 const configuration: WorkerPresenceConfiguration = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   controlPlaneOrigin: 'https://control-plane.perfeng.invalid',
-  browsers: ['edge', 'chromium'],
+  browsers: ['chromium'],
   environment: {
     id: 'windows-mainstream',
     sha256: 'a'.repeat(64),
   },
-};
-
-const v2Configuration: WorkerPresenceConfiguration = {
-  ...configuration,
-  schemaVersion: 2,
-  browsers: ['chromium'],
 };
 
 const source: SourceCheckoutArtifact = {
@@ -57,18 +51,20 @@ test('parses a closed worker presence configuration', () => {
   expect(
     parseWorkerPresenceConfiguration(JSON.stringify(configuration)),
   ).toEqual(configuration);
-  expect(
-    parseWorkerPresenceConfiguration(JSON.stringify(v2Configuration)),
-  ).toEqual(v2Configuration);
+  expect(() =>
+    parseWorkerPresenceConfiguration(
+      JSON.stringify({ ...configuration, schemaVersion: 1 }),
+    ),
+  ).toThrow('Unsupported worker presence configuration schemaVersion');
 });
 
 test('keeps the distributed v2 example valid and unavailable by construction', async () => {
   const example = await readFile(
-    'examples/native-worker-v2-presence.json',
+    'examples/native-worker-presence.json',
     'utf8',
   );
   const parsed = parseWorkerPresenceConfiguration(example);
-  expect(parsed).toEqual(v2Configuration);
+  expect(parsed).toEqual(configuration);
   expect(
     createWorkerPresence({
       configuration: parsed,
@@ -84,13 +80,13 @@ test('rejects v1-only browsers from a v2 presence configuration', () => {
   for (const browsers of [['edge'], ['chromium', 'edge'], ['chrome']]) {
     expect(() =>
       parseWorkerPresenceConfiguration(
-        JSON.stringify({ ...v2Configuration, browsers }),
+        JSON.stringify({ ...configuration, browsers }),
       ),
     ).toThrow('requires only chromium');
   }
   expect(() =>
     parseWorkerPresenceConfiguration(
-      JSON.stringify({ ...v2Configuration, schemaVersion: 3 }),
+      JSON.stringify({ ...configuration, schemaVersion: 3 }),
     ),
   ).toThrow('Unsupported worker presence configuration schemaVersion');
 });
@@ -120,46 +116,7 @@ test('rejects unsafe origins and invalid qualification identifiers', () => {
     parseWorkerPresenceConfiguration(
       JSON.stringify({ ...configuration, browsers: ['edge', 'edge'] }),
     ),
-  ).toThrow('duplicate');
-});
-
-test('reports only verified Windows capabilities and remains unavailable', () => {
-  expect(presence()).toEqual({
-    protocolVersion: 1,
-    agentVersion: '0.13.0',
-    availability: 'UNAVAILABLE',
-    capabilities: {
-      capacity: 1,
-      tool: 'playwright',
-      operatingSystem: 'windows',
-      architecture: 'x64',
-      browsers: ['edge', 'chromium'],
-      runnerContract: 1,
-      executionArtifacts: ['source-checkout'],
-      artifactKinds: ['measurements', 'diagnostics'],
-      diagnosticModes: ['lightweight', 'trace', 'heap'],
-    },
-    qualificationEvidence: {
-      environmentId: 'windows-mainstream',
-      environmentSha256: 'a'.repeat(64),
-      runner: {
-        kind: 'source-checkout',
-        repository: source.repository,
-        revision: 'b'.repeat(40),
-        lockfile: 'pnpm-lock.yaml',
-        lockfileSha256: 'c'.repeat(64),
-      },
-    },
-  });
-  expect(() =>
-    createWorkerPresence({
-      configuration,
-      source,
-      agentVersion: '0.13.0',
-      platform: 'linux',
-      architecture: 'x64',
-    }),
-  ).toThrow('requires Windows');
+  ).toThrow('requires only chromium');
 });
 
 test('reports only the reviewed v2 baseline Chromium capabilities', async () => {
@@ -170,7 +127,7 @@ test('reports only the reviewed v2 baseline Chromium capabilities', async () => 
     ),
   ) as Record<string, unknown>;
   const actual = createWorkerPresence({
-    configuration: v2Configuration,
+    configuration: configuration,
     source,
     agentVersion: '0.13.0',
     platform: 'win32',
@@ -194,53 +151,13 @@ test('reports only the reviewed v2 baseline Chromium capabilities', async () => 
   });
 });
 
-test('posts presence to the fixed endpoint with bearer authentication', async () => {
-  const responseDocument = await readFile(
-    'vendor/contracts/native-worker/v1/examples/presence-status.json',
-    'utf8',
-  );
-  const token = 'worker-secret';
-  const send = ((input: URL | RequestInfo, init?: RequestInit) => {
-    expect(input).toBeInstanceOf(URL);
-    expect((input as URL).href).toBe(
-      'https://control-plane.perfeng.invalid/native-worker/v1/presence',
-    );
-    expect(init?.method).toBe('POST');
-    expect(init?.redirect).toBe('error');
-    expect(new Headers(init?.headers).get('authorization')).toBe(
-      `Bearer ${token}`,
-    );
-    expect(typeof init?.body).toBe('string');
-    expect(JSON.parse(init?.body as string)).toEqual(presence());
-    return Promise.resolve(
-      new Response(responseDocument, {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
-    );
-  }) as typeof fetch;
-
-  const status = await reportWorkerPresence(
-    {
-      controlPlaneOrigin: configuration.controlPlaneOrigin,
-      token,
-      presence: presence(),
-    },
-    send,
-  );
-
-  expect(status.workerId).toBe('windows-laptop-01');
-  expect(status.qualification.status).toBe('QUALIFIED');
-  expect(status.authorizedToAcquire).toBe(true);
-});
-
 test('posts v2 presence to the isolated endpoint and parses its acknowledgement', async () => {
   const responseDocument = await readFile(
     'vendor/contracts/native-worker/v2/examples/presence-status.json',
     'utf8',
   );
   const v2Presence = createWorkerPresence({
-    configuration: v2Configuration,
+    configuration: configuration,
     source,
     agentVersion: '0.13.0',
     platform: 'win32',
@@ -259,7 +176,7 @@ test('posts v2 presence to the isolated endpoint and parses its acknowledgement'
 
   const status = await reportWorkerPresence(
     {
-      controlPlaneOrigin: v2Configuration.controlPlaneOrigin,
+      controlPlaneOrigin: configuration.controlPlaneOrigin,
       token: 'worker-secret',
       presence: v2Presence,
     },
@@ -391,7 +308,7 @@ test('rejects oversized and structurally invalid presence responses', async () =
 
   const valid = JSON.parse(
     await readFile(
-      'vendor/contracts/native-worker/v1/examples/presence-status.json',
+      'vendor/contracts/native-worker/v2/examples/presence-status.json',
       'utf8',
     ),
   ) as Record<string, unknown>;
@@ -414,18 +331,15 @@ test('pins byte-identical Native Worker presence fixtures', async () => {
   const lock = JSON.parse(
     await readFile('vendor/contracts/lock.json', 'utf8'),
   ) as {
-    sourceRevision: string;
-    bundleVersion: string;
-    nativeWorkerApiVersion: string;
-    reviewedOpenApiSha256: string;
+    v2SourceRevision: string;
+    v2BundleVersion: string;
+    nativeWorkerApiV2Version: string;
     files: Record<string, string>;
   };
   expect(lock).toMatchObject({
-    sourceRevision: 'be847a4c7c0ad22c799389410a8c234d5492abc3',
-    bundleVersion: '0.17.0',
-    nativeWorkerApiVersion: '1.0.0',
-    reviewedOpenApiSha256:
-      '46c2dea401c086b9ba748d1214fea5795a245f56eb8226e38ed03922a98ca51d',
+    v2SourceRevision: 'a019d8fa3f473b0dce1650208fadfe47e959ab6d',
+    v2BundleVersion: '0.18.0',
+    nativeWorkerApiV2Version: '2.0.0',
   });
   for (const [path, expected] of Object.entries(lock.files)) {
     const bytes = await readFile(`vendor/contracts/${path}`);

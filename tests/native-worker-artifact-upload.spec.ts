@@ -5,12 +5,15 @@ import { join } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
-import { AcquiredNativeLease } from '../src/native-worker/acquisition.js';
+import { AcquiredNativeV2Lease } from '../src/native-worker/acquisition.js';
 import {
   NativeArtifactUploadFailure,
   uploadNativeArtifact,
 } from '../src/native-worker/artifact-upload.js';
-import { parseNativeLease } from '../src/native-worker/lease.js';
+import {
+  parseNativeExecutionRecipe,
+  type NativeWorkerQualificationEvidence,
+} from '../src/native-worker/execution-recipe.js';
 import {
   AcquiredNativeUploadGrant,
   createNativeUploadGrant,
@@ -20,14 +23,21 @@ const controlPlaneOrigin = 'https://control-plane.perfeng.invalid';
 const token = 'worker-secret';
 const capability = 'example-not-a-real-lease-capability-0001';
 
-async function acquiredLease(): Promise<AcquiredNativeLease> {
-  return new AcquiredNativeLease(
-    parseNativeLease(
-      await readFile(
-        'vendor/contracts/native-worker/v1/examples/lease.json',
-        'utf8',
-      ),
+async function acquiredLease(): Promise<AcquiredNativeV2Lease> {
+  const [lease, presence] = await Promise.all([
+    readFile('vendor/contracts/native-worker/v2/examples/lease.json', 'utf8'),
+    readFile(
+      'vendor/contracts/native-worker/v2/examples/presence.json',
+      'utf8',
     ),
+  ]);
+  const evidence = (
+    JSON.parse(presence) as {
+      qualificationEvidence: NativeWorkerQualificationEvidence;
+    }
+  ).qualificationEvidence;
+  return new AcquiredNativeV2Lease(
+    parseNativeExecutionRecipe(lease, evidence),
     capability,
   );
 }
@@ -38,7 +48,7 @@ async function acquiredGrant(
   const [authority, document] = await Promise.all([
     acquiredLease(),
     readFile(
-      'vendor/contracts/native-worker/v1/examples/upload-grant.json',
+      'vendor/contracts/native-worker/v2/examples/upload-grant.json',
       'utf8',
     ).then((value) => JSON.parse(value) as Record<string, unknown>),
   ]);

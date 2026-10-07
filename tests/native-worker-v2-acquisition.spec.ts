@@ -10,7 +10,7 @@ import {
   type AcquiredNativeV2Lease,
   type NativeV2LeaseAcquisition,
   type NativeV2LeaseAcquisitionRequest,
-} from '../src/native-worker/acquisition-v2.js';
+} from '../src/native-worker/acquisition.js';
 import type { NativeWorkerQualificationEvidence } from '../src/native-worker/execution-recipe.js';
 
 const controlPlaneOrigin = 'https://control-plane.perfeng.invalid';
