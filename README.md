@@ -29,7 +29,8 @@ Implementation is organized by responsibility:
 - `src/memory`: garbage-collected memory census and heap-snapshot capture;
 - `src/native-worker`: strict Native Worker API transport, presence configuration, lease
   acquisition, renewal, release, upload-grant validation, exact presigned artifact transfer,
-  lease-fenced artifact publication, terminal reporting, and qualification-evidence projection;
+  lease-fenced artifact publication, terminal reporting, one-shot attempt coordination, and
+  qualification-evidence projection;
 - `src/smoothness`: rendering-focused Chromium trace capture.
 
 The short files at the `src` root are package entry points, command and
@@ -68,30 +69,32 @@ and video in ignored local output directories; CI uploads that evidence only whe
 
 The separately packaged `perfeng-playwright-worker` command can authenticate a
 clean Windows source checkout and report its current capabilities and immutable
-qualification evidence to the Native Worker API. It supports one-shot presence
-checks and a cancellable, server-paced heartbeat. This worker slice always
-reports `UNAVAILABLE`: it proves identity, contract, platform, provenance, and
-server qualification wiring without claiming that the still-unimplemented lease
-execution loop can accept work.
+qualification evidence to the Native Worker API. It supports presence checks, a
+cancellable heartbeat, and an explicit `run-once` command. Presence and heartbeat
+always report `UNAVAILABLE`. `run-once` briefly offers `AVAILABLE`, acquires at most
+one lease, withdraws availability, and coordinates that attempt. It requires an
+empty, dedicated spool and leaves uncertain state for manual reconciliation;
+there is no unattended worker daemon or automatic restart recovery.
 
 Configuration and exact operating instructions are in the
 [native worker presence guide](docs/native-worker-presence.md). The worker also provides a
 token-free, read-only `spool-status` command for operator inspection of retained attempt paths;
 it does not recover a lease. The client pins reviewed perfeng-contracts bundle 0.19.0
 for v2 presence, lease, artifact-publication and terminal fixtures. Configuration version 2
-reports baseline Chromium presence to `/native-worker/v2/presence`; it still reports
-`UNAVAILABLE`, never acquires work, and does not run a lease yet. A separate
+reports baseline Chromium presence to `/native-worker/v2/presence`. A separate
 v2 acquisition transport can validate a server-issued lease against current
 qualification evidence. Renewal, release, upload-grant, artifact-registration and terminal-reporting
-transports route v2 authority to matching v2 endpoints, but the CLI does not call
-any lease transport. The worker
+transports route v2 authority to matching v2 endpoints. Only `run-once` calls
+the lease transports. The worker
 requires HTTPS, refuses redirects, bounds response bytes, and never reads a
 credential from JSON or a command-line argument. Its raw-result path constructs
 deterministic `raw-result/v2` bytes from matching measurements, immutable
 execution provenance, and lease-fenced registered evidence. It persists the manifest
 exclusively and publishes it through the v2 grant, transfer, and registration boundary.
 Manifests identify the reviewed 0.19.0 contracts bundle.
-The CLI still does not execute work or advance the Run.
+The one-shot CLI may execute work and advance the Run only after successful
+qualification and lease acquisition. Live Windows and control-plane acceptance
+remains a separate rollout gate.
 
 ## Semantic measurements
 
