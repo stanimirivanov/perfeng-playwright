@@ -103,3 +103,5 @@ How will assumptions and consequences be verified?
   — Proposed
 - [ADR-0011: Retire Native Worker v1 from the Playwright worker](0011-retire-native-worker-v1.md)
   — Accepted; supersedes ADR-0002
+- [ADR-0012: Run one Native Worker attempt with manual recovery](0012-run-one-native-attempt-with-manual-recovery.md)
+  — Accepted

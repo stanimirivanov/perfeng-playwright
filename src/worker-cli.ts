@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { readFile } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
+import { dirname } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { inspectSourceCheckout } from './source-checkout.js';
 import {
@@ -12,6 +13,10 @@ import { readWorkerPresenceConfiguration } from './native-worker/configuration.j
 import { runPresenceHeartbeat } from './native-worker/heartbeat.js';
 import { createWorkerPresence } from './native-worker/presence.js';
 import {
+  runNativeWorkerOnce,
+  type NativeRunOnceResult,
+} from './native-worker/run-once.js';
+import {
   inspectNativeAttemptSpool,
   type NativeSpoolInspection,
 } from './native-worker/spool-inspection.js';
@@ -21,17 +26,48 @@ import type {
   WorkerPresenceStatus,
 } from './native-worker/types.js';
 
+export type { NativeRunOnceResult } from './native-worker/run-once.js';
+
 const credentialVariable = 'PERFENG_NATIVE_WORKER_TOKEN';
+const runnerCheckoutRoot = dirname(
+  fileURLToPath(new URL('../package.json', import.meta.url)),
+);
 const usage =
-  'Usage: perfeng-playwright-worker <presence|heartbeat> --config FILE | spool-status --spool-root DIRECTORY';
+  'Usage: perfeng-playwright-worker <presence|heartbeat> --config FILE | spool-status --spool-root DIRECTORY | run-once --config FILE --spool-root DIRECTORY --timeout-ms INTEGER';
 
 /** Parsed action and configuration path accepted by the Native Worker executable. */
 export type WorkerCommand =
   | { action: 'presence' | 'heartbeat'; configurationPath: string }
-  | { action: 'spool-status'; spoolRoot: string };
+  | { action: 'spool-status'; spoolRoot: string }
+  | {
+      action: 'run-once';
+      configurationPath: string;
+      spoolRoot: string;
+      timeoutMilliseconds: number;
+    };
 
 /** Parses the Native Worker executable's presence, heartbeat or local spool inspection. */
 export function parseWorkerCommand(args: string[]): WorkerCommand {
+  if (
+    args.length === 7 &&
+    args[0] === 'run-once' &&
+    args[1] === '--config' &&
+    args[2] !== undefined &&
+    args[2] !== '' &&
+    args[3] === '--spool-root' &&
+    args[4] !== undefined &&
+    args[4] !== '' &&
+    args[5] === '--timeout-ms' &&
+    args[6] !== undefined &&
+    args[6] !== ''
+  ) {
+    return {
+      action: 'run-once',
+      configurationPath: args[2],
+      spoolRoot: args[4],
+      timeoutMilliseconds: Number(args[6]),
+    };
+  }
   if (
     args.length === 3 &&
     args[0] === 'spool-status' &&
@@ -59,7 +95,9 @@ export async function workerMain(
   args: string[],
   environment: NodeJS.ProcessEnv = process.env,
   signal: AbortSignal = new AbortController().signal,
-): Promise<WorkerPresenceStatus | NativeSpoolInspection | undefined> {
+): Promise<
+  WorkerPresenceStatus | NativeSpoolInspection | NativeRunOnceResult | undefined
+> {
   const command = parseWorkerCommand(args);
   if (command.action === 'spool-status') {
     return inspectNativeAttemptSpool(command.spoolRoot);
@@ -72,6 +110,25 @@ export async function workerMain(
     readWorkerPresenceConfiguration(command.configurationPath),
     readAgentVersion(),
   ]);
+  if (command.action === 'run-once') {
+    return runNativeWorkerOnce({
+      presence: await createWorkerPresenceFromCheckout(
+        configuration,
+        agentVersion,
+      ),
+      controlPlaneOrigin: configuration.controlPlaneOrigin,
+      token,
+      checkoutRoot: runnerCheckoutRoot,
+      spoolRoot: command.spoolRoot,
+      runnerEnvironment: Object.fromEntries(
+        Object.entries(environment).filter(
+          ([name]) => name.toUpperCase() !== credentialVariable,
+        ),
+      ),
+      timeoutMilliseconds: command.timeoutMilliseconds,
+      signal,
+    });
+  }
   const createPresence = (): Promise<WorkerPresence> =>
     createWorkerPresenceFromCheckout(configuration, agentVersion);
   const reportPresence = (

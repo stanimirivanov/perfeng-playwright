@@ -6,12 +6,12 @@
 - Keep the endpoint and environment evidence in closed non-secret JSON; supply the worker-audience
   token through `PERFENG_NATIVE_WORKER_TOKEN` and use an HTTPS control-plane origin.
 - The worker reports baseline Chromium capability to `/native-worker/v2/presence` only.
-- Presence reports `UNAVAILABLE`. Treat `authorizedToAcquire` as server policy, not proof of
-  execution readiness.
-- V2 acquisition, renewal, release, supervised execution, artifact validation and publication
-  boundaries are available for composition and tests; the CLI does not acquire or execute leases.
-- A single lifecycle coordinator must own authority loss, publication and terminal reporting before
-  the worker can advertise availability.
+- `presence` and `heartbeat` report `UNAVAILABLE`. Treat `authorizedToAcquire` as server policy,
+  not proof of execution readiness.
+- The explicit `run-once` command checks an empty dedicated spool, offers one brief acquisition
+  window, withdraws availability, and coordinates at most one v2 attempt.
+- There is no unattended acquisition loop or automatic restart recovery. Uncertain outcomes retain
+  an owner marker and require manual server-state reconciliation.
 - `spool-status` inventories retained local attempt names without interpreting or modifying evidence;
   it does not recover a lease.
 
@@ -57,7 +57,7 @@ The command derives these values instead of accepting them from configuration:
 Dirty source, an unsupported platform or architecture, invalid evidence, an unsafe origin, or an
 unknown configuration field fails before an HTTP request is made.
 
-## Run once
+## Report presence once
 
 Build from the clean revision that will be reported. Load the distinct worker-audience credential
 from Windows Credential Manager or another operator-approved protected store into the process
@@ -96,13 +96,46 @@ jittered earlier by no more than ten percent. HTTP 429 and 503 responses may pro
 contract, malformed response, and other permanent errors terminate the process for operator
 attention. Status output and retry messages contain no credentials or server response bodies.
 
+## Execute one assigned attempt
+
+`run-once` is an explicit, single-attempt command, not a service. Use it only on a reviewed native
+Windows host with the matching built checkout, installed Chromium, an authorized target, a
+compatible v2 control plane and a dedicated empty spool outside the checkout. Provision the spool
+with operator-controlled Windows ACLs; Node mode bits do not provide Windows access control.
+The control-plane policy must approve the host evidence and the selected runner revision.
+
+```powershell
+pnpm build
+New-Item -ItemType Directory C:\perfeng-native-spool
+$env:PERFENG_NATIVE_WORKER_TOKEN = Read-Host "Native worker token" -MaskInput
+node dist/worker-cli.js run-once --config C:\path\to\native-worker-presence.json --spool-root C:\perfeng-native-spool --timeout-ms 600000
+Remove-Item Env:PERFENG_NATIVE_WORKER_TOKEN
+```
+
+Create the spool directory only if it does not already exist, and use an empty dedicated directory
+for each fresh attempt. The command does not create or clean it. It exclusively creates
+`.native-worker-owner` before any server request, refuses any other entry, reports `UNAVAILABLE`,
+then briefly offers `AVAILABLE` and makes one immediate acquisition request. An idle reply exits
+without running a browser. On a lease, it withdraws availability before execution, supervises the
+browser and lease, publishes evidence in contract order, and reports one terminal outcome. A
+completed or server-acknowledged failed attempt releases only the owner marker; it retains its
+attempt directory and evidence. Inspect and archive that evidence before reusing the spool.
+
+A timed-out or otherwise uncertain acquisition or attempt retains the owner marker. Do not delete
+the marker merely to make the next invocation pass. Stop all local worker/browser processes,
+inspect `spool-status`, reconcile the worker's lease and Run/attempt state with the control plane,
+and preserve any local evidence before an operator explicitly clears the marker and archived
+attempt directory. If availability withdrawal failed, also verify server presence has become
+`UNAVAILABLE` or expired. The marker is a local single-process exclusion mechanism, not proof of
+remote lease state. It cannot prevent unrelated users or processes with write access to the spool
+from changing files. See [ADR-0012](decisions/0012-run-one-native-attempt-with-manual-recovery.md).
+
 ## Current boundary
 
-Both modes always send `availability: "UNAVAILABLE"`. The heartbeat maintains presence and observes
-operator cancellation, but it does not acquire or renew leases, run a browser, upload evidence,
-register artifacts, or report a terminal outcome. Those operations require later reviewed slices.
-Do not reinterpret a running heartbeat as a ready worker; `authorizedToAcquire` remains server
-policy and the process deliberately does not act on it.
+The `presence` and `heartbeat` commands always send `availability: "UNAVAILABLE"`. The heartbeat
+maintains presence and observes operator cancellation, but does not acquire or execute leases.
+Only the explicit `run-once` command temporarily reports `AVAILABLE` and invokes the complete
+v2 attempt coordinator. `authorizedToAcquire` alone remains server policy, not execution readiness.
 
 The vendored presence examples and lock under `vendor/contracts` pin byte-identical v2 fixtures from
 perfeng-contracts bundle 0.19.0. The v2 OpenAPI and example bytes are unchanged from 0.18.0;
@@ -119,10 +152,9 @@ parser itself does not contact the control plane or launch a browser. The separa
 transport sends the closed v2 request to `/native-worker/v2/leases`, bounds the long poll, distinguishes
 `204` idle from a `200` lease, and parses the lease against current qualification evidence before
 returning its capability-bearing authority. It refuses redirects, discards error bodies, and never
-serializes the `X-Perfeng-Lease` capability. The presence command does not call this transport.
-The worker continues to report `UNAVAILABLE` until the
-complete v2 lifecycle is implemented and verified. A response with
-`authorizedToAcquire: true` is server policy, not permission for this process to acquire work.
+serializes the `X-Perfeng-Lease` capability. Presence and heartbeat do not call this transport.
+`run-once` calls it only after claiming an empty spool and receiving accepted available presence.
+A response with `authorizedToAcquire: true` alone is not permission to acquire work.
 
 The package also contains contract-validated lease acquisition, renewal, release and upload-grant
 transports needed by the next worker lifecycle slice. Acquisition distinguishes an acquired lease
@@ -143,8 +175,8 @@ The worker rejects prerelease workload and environment-profile versions before e
 the current measurement and raw-result schemas permit only `major.minor.patch` values.
 The control plane's Run policy and runtime contracts version must also accept 0.19.0 before v2
 issuance is enabled; a control plane pinned to an older bundle rejects the v2 manifest.
-The CLI still cannot execute work, and the server must not issue v2 work until the complete worker
-execution and terminal lifecycle is reviewed.
+The one-shot CLI can execute one assigned attempt. Server issuance and live Windows use require
+an explicit rollout review; this change does not establish unattended operational readiness.
 
 The current plan requires `playwright-measurements/v2` for the `measurements` slot and
 `raw-result/v2` for the `manifest` slot. Acquisition rejects the obsolete hyphenated placeholders
@@ -221,9 +253,8 @@ checking complete registered evidence, enforcing manifest-last ordering, advanci
 rejecting a conflicting terminal claim. Cancellation continues to use lease release rather than a
 terminal report.
 
-The CLI does not call these lease transports yet. Acquiring work before process-tree cancellation,
-execution preparation, and lifecycle coordination are composed could still abandon authority or
-misrepresent execution, and would contradict the worker's `UNAVAILABLE` presence.
+The `run-once` command uses these transports through the supervised attempt coordinator. Presence
+and heartbeat do not call them.
 
 The runner subprocess adapter now accepts a caller-reviewed executable, arguments, working directory,
 explicit environment, cancellation signal and bounded timeout. It does not use a shell or inherit
@@ -233,8 +264,8 @@ process group. A failed tree-stop operation is reported as a termination failure
 cancellation. The adapter does not validate the selected runner revision or prepare per-attempt
 configuration; those remain lifecycle-coordinator responsibilities. In particular, the runner must
 keep its browser descendants owned until its own exit. This boundary has process-level tests on the
-development host, but still needs representative Windows/Chromium verification before the worker
-reports `AVAILABLE` or acquires a lease.
+development host, but still needs representative Windows/Chromium verification before unattended
+worker rollout.
 
 V2 attempt preparation verifies the current clean source checkout against the assigned runner
 revision and lock before creating state. It requires an existing, operator-owned, non-symlink spool
@@ -270,9 +301,9 @@ then loads the validated measurements. The worker-audience token is refused in t
 Cancellation, timeout, nonzero exit or invalid output never produces publication inputs; the attempt
 directory and any committed files remain for inspection. The ignored `dist/cli.js` build output is
 not itself bound by the source-checkout digest, so operators must build it from the reviewed checkout.
-The local helper alone does not renew, publish or report. The later attempt coordinator composes
-those steps; restart recovery and acquisition remain required before the worker may report
-`AVAILABLE`.
+The local helper alone does not renew, publish or report. The attempt coordinator composes those
+steps. `run-once` reports `AVAILABLE` only for one bounded acquisition window; restart recovery
+remains manual.
 
 The v2 evidence-publication operation reloads the committed local measurements before any remote
 request. It grants, uploads and registers that slot first, then builds the `raw-result/v2` manifest
@@ -281,15 +312,16 @@ The manifest timestamp is selected after measurement registration; if manifest p
 after local commitment, an explicit retry must reuse the original `createdAt` to reproduce the exact
 bytes. Mismatched recovery state is preserved and rejected rather than replaced. The caller must
 keep renewal, cancellation and revision authority current throughout this operation; the attempt
-coordinator owns that policy. No CLI work acquisition or external target is enabled here.
+coordinator owns that policy. Only the explicit one-shot command can acquire work; publication
+itself does not select a target.
 
 The v2 lease supervisor can wrap an abort-aware attempt while it prepares, runs, uploads and
 finalizes. It renews immediately, then at the server-directed interval, exposes the latest accepted
 revision, and permits only forward phase transitions. Server cancellation, lost authority, expiry,
 shutdown or a renewal failure aborts the operation and waits for it to settle. It does not claim
 release or terminal completion, automatically retry renewal, or remove evidence; see
-[ADR-0004](decisions/0004-fail-closed-native-lease-supervision.md). The complete worker loop still
-needs restart-recovery and acquisition policy before the CLI can acquire work.
+[ADR-0004](decisions/0004-fail-closed-native-lease-supervision.md). The one-shot command supplies
+bounded acquisition policy but not automatic restart recovery.
 
 An internal v2 attempt coordinator now composes preparation, runner execution, measurement
 validation, measurement-before-manifest publication and terminal reporting under that supervisor.
@@ -305,8 +337,8 @@ an explicit recovery case; see
 After server cancellation or worker shutdown, the supervisor offers release only once abort-aware
 work has settled and the lease still has time before its expiry or `stopBy` deadline. The coordinator
 uses the latest accepted revision and an independent bounded request signal. Lost authority,
-uncertain renewal and failed process termination never claim release. Restart recovery and the
-acquisition loop remain unfinished, so the CLI still reports `UNAVAILABLE`; see
+uncertain renewal and failed process termination never claim release. Automatic restart recovery
+and an unattended acquisition loop remain unfinished; see
 [ADR-0006](decisions/0006-release-stopped-native-attempts-within-proven-authority.md).
 
 ## Inspect retained attempt state

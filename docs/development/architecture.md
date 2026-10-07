@@ -10,9 +10,8 @@
   protocol responsibility, and adapters isolate Playwright, CDP, HTTP, Git and filesystem effects.
 - The structure is sound for one versioned runner distribution. Splitting packages or adding a
   dependency-injection framework would increase coordination without improving an existing boundary.
-- The unfinished Native Worker execution loop should become one explicit lifecycle coordinator; it
-  should compose the existing protocol operations rather than moving their state into a generic
-  service layer.
+- Native Worker one-shot execution has one explicit lifecycle coordinator; an unattended worker
+  loop and automatic restart recovery remain outside this boundary.
 
 ## Architectural style
 
@@ -96,14 +95,14 @@ cancellation and timeout. The generic journey lifecycle is:
 validated configuration -> browser -> context -> page -> warm-up -> measurement -> artifact write
 ```
 
-The Native Worker protocol already models presence, acquisition, renewal, artifact publication,
-terminal reporting and release as focused operations. The execution loop remains intentionally
-unfinished. An internal supervisor maintains v2 lease authority and forward phases around one
-abort-aware operation. The v2 attempt coordinator now composes local execution, publication and
-terminal reporting within that supervision boundary. It also releases stopped cancellation and
-shutdown attempts while authority remains proven. A read-only spool inventory exposes retained
-local paths for operator review; it does not recover server authority. Acquisition and restart
-recovery are still absent.
+The Native Worker protocol models presence, acquisition, renewal, artifact publication, terminal
+reporting and release as focused operations. An internal supervisor maintains v2 lease authority
+and forward phases around one abort-aware operation. The v2 attempt coordinator composes local
+execution, publication and terminal reporting within that boundary. It also releases stopped
+cancellation and shutdown attempts while authority remains proven. `run-once` adds an empty-spool
+gate, local owner marker and one immediate acquisition window. A read-only spool inventory exposes
+retained paths for operator review but does not recover server authority. Unattended acquisition
+and automatic restart recovery remain absent.
 The complete worker loop should use an explicit transition model:
 
 ```text
@@ -140,7 +139,7 @@ The current structure follows the selected architecture:
 
 Two constraints should guide the next implementation steps:
 
-- complete Native Worker recovery and acquisition policy before enabling availability;
+- define authoritative restart recovery before enabling unattended Native Worker availability;
 - split `src/native-worker/types.ts` by protocol responsibility only when the coordinator makes
   ownership clearer, not merely to reduce file length.
 

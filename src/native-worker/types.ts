@@ -23,7 +23,7 @@ export type WorkerPresenceConfiguration = WorkerPresenceConfigurationFields & {
 
 interface WorkerPresenceFields {
   agentVersion: string;
-  availability: 'UNAVAILABLE';
+  availability: 'AVAILABLE' | 'UNAVAILABLE';
   qualificationEvidence: {
     environmentId: string;
     environmentSha256: string;
