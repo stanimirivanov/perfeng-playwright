@@ -105,8 +105,10 @@ Do not reinterpret a running heartbeat as a ready worker; `authorizedToAcquire` 
 policy and the process deliberately does not act on it.
 
 The vendored presence examples and lock under `vendor/contracts` pin byte-identical v2 fixtures from
-perfeng-contracts bundle 0.18.0. The lock records its reviewed full OpenAPI checksum. Updating the API requires an explicit contract repin and
-compatibility review rather than accepting a moving schema.
+perfeng-contracts bundle 0.19.0. The v2 OpenAPI and example bytes are unchanged from 0.18.0;
+the new bundle retires Native Worker v1. The lock records the reviewed full v2 OpenAPI checksum.
+Updating the API requires an explicit contract repin and compatibility review rather than accepting
+a moving schema.
 
 The same lock pins the Native Worker v2 acquisition and lease examples. The pure v2 recipe parser
 verifies the closed baseline Chromium lease, exact two-slot artifact plan, supported search journey, and
@@ -136,11 +138,11 @@ v2 endpoints. Registration refuses a mismatched grant before any network call. T
 terminal transport accepts v2 authority, posts to the v2 endpoint and
 checks the acknowledgement against the acquired attempt and expected Run revision. Raw-result
 construction and manifest publication also accept v2 authority: the builder checks measurements
-against the complete v2 recipe and uses the reviewed 0.18.0 bundle identity.
+against the complete v2 recipe and uses the reviewed 0.19.0 bundle identity.
 The worker rejects prerelease workload and environment-profile versions before execution because
 the current measurement and raw-result schemas permit only `major.minor.patch` values.
-The control plane's Run policy and runtime contracts version must also accept 0.18.0 before v2
-issuance is enabled; a control plane still expecting 0.17.0 rejects the v2 manifest.
+The control plane's Run policy and runtime contracts version must also accept 0.19.0 before v2
+issuance is enabled; a control plane pinned to an older bundle rejects the v2 manifest.
 The CLI still cannot execute work, and the server must not issue v2 work until the complete worker
 execution and terminal lifecycle is reviewed.
 
