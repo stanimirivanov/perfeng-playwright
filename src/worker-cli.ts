@@ -10,6 +10,10 @@ import {
   reportWorkerPresence,
 } from './native-worker/client.js';
 import { readWorkerPresenceConfiguration } from './native-worker/configuration.js';
+import {
+  inspectNativeAttempt,
+  type NativeAttemptInspectionResult,
+} from './native-worker/attempt-inspection.js';
 import { runPresenceHeartbeat } from './native-worker/heartbeat.js';
 import { createWorkerPresence } from './native-worker/presence.js';
 import {
@@ -32,19 +36,29 @@ import type {
 
 export type { NativeRunOnceResult } from './native-worker/run-once.js';
 export type { RetainedAttemptIntegrity } from './native-worker/retained-attempt.js';
+export type {
+  NativeAttemptInspection,
+  NativeAttemptInspectionResult,
+} from './native-worker/attempt-inspection.js';
 
 const credentialVariable = 'PERFENG_NATIVE_WORKER_TOKEN';
 const runnerCheckoutRoot = dirname(
   fileURLToPath(new URL('../package.json', import.meta.url)),
 );
 const usage =
-  'Usage: perfeng-playwright-worker <presence|heartbeat> --config FILE | spool-status --spool-root DIRECTORY | spool-verify --spool-root DIRECTORY --attempt NAME | run-once --config FILE --spool-root DIRECTORY --timeout-ms INTEGER';
+  'Usage: perfeng-playwright-worker <presence|heartbeat> --config FILE | spool-status --spool-root DIRECTORY | spool-verify --spool-root DIRECTORY --attempt NAME | attempt-status --config FILE --run-id ID --attempt-id UUID | run-once --config FILE --spool-root DIRECTORY --timeout-ms INTEGER';
 
 /** Parsed action and configuration path accepted by the Native Worker executable. */
 export type WorkerCommand =
   | { action: 'presence' | 'heartbeat'; configurationPath: string }
   | { action: 'spool-status'; spoolRoot: string }
   | { action: 'spool-verify'; spoolRoot: string; attemptName: string }
+  | {
+      action: 'attempt-status';
+      configurationPath: string;
+      runId: string;
+      attemptId: string;
+    }
   | {
       action: 'run-once';
       configurationPath: string;
@@ -54,6 +68,26 @@ export type WorkerCommand =
 
 /** Parses Native Worker presence, execution and read-only spool commands. */
 export function parseWorkerCommand(args: string[]): WorkerCommand {
+  if (
+    args.length === 7 &&
+    args[0] === 'attempt-status' &&
+    args[1] === '--config' &&
+    args[2] !== undefined &&
+    args[2] !== '' &&
+    args[3] === '--run-id' &&
+    args[4] !== undefined &&
+    args[4] !== '' &&
+    args[5] === '--attempt-id' &&
+    args[6] !== undefined &&
+    args[6] !== ''
+  ) {
+    return {
+      action: 'attempt-status',
+      configurationPath: args[2],
+      runId: args[4],
+      attemptId: args[6],
+    };
+  }
   if (
     args.length === 5 &&
     args[0] === 'spool-verify' &&
@@ -117,6 +151,7 @@ export async function workerMain(
   | WorkerPresenceStatus
   | NativeSpoolInspection
   | RetainedAttemptIntegrity
+  | NativeAttemptInspectionResult
   | NativeRunOnceResult
   | undefined
 > {
@@ -133,6 +168,18 @@ export async function workerMain(
   const token = environment[credentialVariable];
   if (token === undefined || token === '') {
     throw new Error(`${credentialVariable} is required`);
+  }
+  if (command.action === 'attempt-status') {
+    const configuration = await readWorkerPresenceConfiguration(
+      command.configurationPath,
+    );
+    return inspectNativeAttempt({
+      controlPlaneOrigin: configuration.controlPlaneOrigin,
+      token,
+      runId: command.runId,
+      attemptId: command.attemptId,
+      signal,
+    });
   }
   const [configuration, agentVersion] = await Promise.all([
     readWorkerPresenceConfiguration(command.configurationPath),
