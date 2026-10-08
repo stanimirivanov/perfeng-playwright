@@ -79,8 +79,9 @@ there is no unattended worker daemon or automatic restart recovery.
 
 Configuration and exact operating instructions are in the
 [native worker presence guide](docs/native-worker-presence.md). The worker also provides a
-token-free, read-only `spool-status` command for operator inspection of retained attempt paths;
-it does not recover a lease. The client pins reviewed perfeng-contracts bundle 0.19.0
+token-free, read-only `spool-status` command for operator inspection of retained attempt paths
+and `spool-verify` for checking local measurement bytes against the runner receipt; neither
+recovers a lease. The client pins reviewed perfeng-contracts bundle 0.19.0
 for v2 presence, lease, artifact-publication and terminal fixtures. Configuration version 2
 reports baseline Chromium presence to `/native-worker/v2/presence`. A separate
 v2 acquisition transport can validate a server-issued lease against current

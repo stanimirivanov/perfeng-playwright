@@ -20,6 +20,10 @@ import {
   inspectNativeAttemptSpool,
   type NativeSpoolInspection,
 } from './native-worker/spool-inspection.js';
+import {
+  verifyRetainedAttemptMeasurements,
+  type RetainedAttemptIntegrity,
+} from './native-worker/retained-attempt.js';
 import type {
   WorkerPresence,
   WorkerPresenceConfiguration,
@@ -27,18 +31,20 @@ import type {
 } from './native-worker/types.js';
 
 export type { NativeRunOnceResult } from './native-worker/run-once.js';
+export type { RetainedAttemptIntegrity } from './native-worker/retained-attempt.js';
 
 const credentialVariable = 'PERFENG_NATIVE_WORKER_TOKEN';
 const runnerCheckoutRoot = dirname(
   fileURLToPath(new URL('../package.json', import.meta.url)),
 );
 const usage =
-  'Usage: perfeng-playwright-worker <presence|heartbeat> --config FILE | spool-status --spool-root DIRECTORY | run-once --config FILE --spool-root DIRECTORY --timeout-ms INTEGER';
+  'Usage: perfeng-playwright-worker <presence|heartbeat> --config FILE | spool-status --spool-root DIRECTORY | spool-verify --spool-root DIRECTORY --attempt NAME | run-once --config FILE --spool-root DIRECTORY --timeout-ms INTEGER';
 
 /** Parsed action and configuration path accepted by the Native Worker executable. */
 export type WorkerCommand =
   | { action: 'presence' | 'heartbeat'; configurationPath: string }
   | { action: 'spool-status'; spoolRoot: string }
+  | { action: 'spool-verify'; spoolRoot: string; attemptName: string }
   | {
       action: 'run-once';
       configurationPath: string;
@@ -46,8 +52,20 @@ export type WorkerCommand =
       timeoutMilliseconds: number;
     };
 
-/** Parses the Native Worker executable's presence, heartbeat or local spool inspection. */
+/** Parses Native Worker presence, execution and read-only spool commands. */
 export function parseWorkerCommand(args: string[]): WorkerCommand {
+  if (
+    args.length === 5 &&
+    args[0] === 'spool-verify' &&
+    args[1] === '--spool-root' &&
+    args[2] !== undefined &&
+    args[2] !== '' &&
+    args[3] === '--attempt' &&
+    args[4] !== undefined &&
+    args[4] !== ''
+  ) {
+    return { action: 'spool-verify', spoolRoot: args[2], attemptName: args[4] };
+  }
   if (
     args.length === 7 &&
     args[0] === 'run-once' &&
@@ -90,17 +108,27 @@ export function parseWorkerCommand(args: string[]): WorkerCommand {
   return { action: args[0], configurationPath: args[2] };
 }
 
-/** Reports presence, runs its heartbeat or inventories local retained attempt paths. */
+/** Runs the selected Native Worker or read-only local inspection command. */
 export async function workerMain(
   args: string[],
   environment: NodeJS.ProcessEnv = process.env,
   signal: AbortSignal = new AbortController().signal,
 ): Promise<
-  WorkerPresenceStatus | NativeSpoolInspection | NativeRunOnceResult | undefined
+  | WorkerPresenceStatus
+  | NativeSpoolInspection
+  | RetainedAttemptIntegrity
+  | NativeRunOnceResult
+  | undefined
 > {
   const command = parseWorkerCommand(args);
   if (command.action === 'spool-status') {
     return inspectNativeAttemptSpool(command.spoolRoot);
+  }
+  if (command.action === 'spool-verify') {
+    return verifyRetainedAttemptMeasurements(
+      command.spoolRoot,
+      command.attemptName,
+    );
   }
   const token = environment[credentialVariable];
   if (token === undefined || token === '') {

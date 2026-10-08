@@ -101,7 +101,15 @@ async function inspectNativeAttemptArtifacts(
     maximumReceiptBytes,
     true,
   );
-  const receipt = parseReceipt(receiptFile.bytes, authority, plan.maximumBytes);
+  const receipt = parseNativeRunnerReceipt(
+    receiptFile.bytes,
+    {
+      runId: authority.recipe.runId,
+      testId: authority.recipe.configuration.testId,
+      executionArtifact: authority.recipe.executionArtifact,
+    },
+    plan.maximumBytes,
+  );
   const measured = await inspectRegularFile(
     prepared.measurementsPath,
     plan.maximumBytes,
@@ -139,9 +147,21 @@ function validatePreparedPaths(
   }
 }
 
-function parseReceipt(
+export interface NativeRunnerReceiptExpectation {
+  runId: string;
+  testId: string;
+  executionArtifact?: {
+    repository: string;
+    revision: string;
+    lockfile: string;
+    lockfileSha256: string;
+  };
+}
+
+/** Parses a closed receipt and checks the expected local or lease-bound identity. */
+export function parseNativeRunnerReceipt(
   bytes: Buffer | undefined,
-  authority: AcquiredNativeV2Lease,
+  expected: NativeRunnerReceiptExpectation,
   maximumBytes: number,
 ): { size: number; sha256: string; producerVersion: string } {
   if (bytes === undefined) {
@@ -185,20 +205,28 @@ function parseReceipt(
     'sha256',
     'sizeBytes',
   ]);
-  const recipe = authority.recipe;
   if (
     receipt.schema !== 'playwright-runner-receipt/v2' ||
-    receipt.runId !== recipe.runId ||
-    receipt.testId !== recipe.configuration.testId ||
+    receipt.runId !== expected.runId ||
+    receipt.testId !== expected.testId ||
     producer.name !== 'playwright' ||
     artifact.kind !== 'source-checkout' ||
-    artifact.repository !== recipe.executionArtifact.repository ||
-    artifact.gitSha !== recipe.executionArtifact.revision ||
-    lock.path !== recipe.executionArtifact.lockfile ||
-    lock.sha256 !== recipe.executionArtifact.lockfileSha256
+    typeof artifact.repository !== 'string' ||
+    typeof artifact.gitSha !== 'string' ||
+    typeof lock.path !== 'string' ||
+    (expected.executionArtifact !== undefined &&
+      (artifact.repository !== expected.executionArtifact.repository ||
+        artifact.gitSha !== expected.executionArtifact.revision ||
+        lock.path !== expected.executionArtifact.lockfile ||
+        lock.sha256 !== expected.executionArtifact.lockfileSha256))
   ) {
-    throw new Error('Native runner receipt differs from the lease');
+    throw new Error(
+      expected.executionArtifact === undefined
+        ? 'Native runner receipt differs from the local configuration'
+        : 'Native runner receipt differs from the lease',
+    );
   }
+  contractSha256(lock.sha256, 'native runner dependency lock SHA-256');
   const producerVersion = patternString(
     producer.version,
     'native runner producer version',
