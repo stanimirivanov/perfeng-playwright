@@ -14,6 +14,8 @@
   an owner marker and require manual server-state reconciliation.
 - `spool-status` inventories retained local attempt names without interpreting or modifying evidence;
   it does not recover a lease.
+- `spool-verify` checks one retained measurement against its local receipt without claiming server
+  authority, upload completion or a terminal outcome.
 
 The presence command is the first executable slice of the outbound native Windows agent selected
 by the Native Worker API architecture decision. It reports bounded capabilities and immutable
@@ -356,3 +358,18 @@ it does not mean the files are valid or the lease can be resumed. The command ne
 state nor contacts the control plane. A concurrent worker can change the spool after inspection,
 so this is not an acquisition lock. See
 [ADR-0007](decisions/0007-inspect-retained-native-attempts-without-resuming.md).
+
+For one attempt listed by `spool-status`, verify the runner-committed local measurement bytes:
+
+```powershell
+perfeng-playwright-worker spool-verify --spool-root C:\perfeng-spool --attempt perf-20261007-120000-abcdef12-22222222-2222-4222-8222-222222222222
+```
+
+This read-only command requires a bounded regular configuration, receipt and measurement file.
+It checks the attempt Run ID, baseline configuration, receipt identity and exact measurement size
+and SHA-256. A nonzero exit means the local measurement evidence is incomplete, changed or unsafe;
+it does not remove anything. Even a successful result reports `serverStateVerified: false`: it
+does not validate measurement semantics against the original lease, prove upload or registration,
+resolve an uncertain terminal response, or authorize another acquisition. Reconcile the Run and
+attempt with the control plane before making any retention or restart decision. Protect the spool
+and its output because Run and attempt IDs may be sensitive.
