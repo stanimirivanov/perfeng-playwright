@@ -100,9 +100,10 @@ reporting and release as focused operations. An internal supervisor maintains v2
 and forward phases around one abort-aware operation. The v2 attempt coordinator composes local
 execution, publication and terminal reporting within that boundary. It also releases stopped
 cancellation and shutdown attempts while authority remains proven. `run-once` adds an empty-spool
-gate, local owner marker and one immediate acquisition window. Read-only spool inspection and
-local receipt-bound measurement verification support operator review but do not recover server authority. Unattended acquisition
-and automatic restart recovery remain absent.
+gate, local owner marker and one immediate acquisition window. Read-only spool inspection,
+receipt-bound measurement verification and worker-scoped server attempt inspection support
+operator review but do not recover lease authority. Unattended acquisition and automatic restart
+recovery remain absent.
 The complete worker loop should use an explicit transition model:
 
 ```text

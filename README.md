@@ -81,8 +81,10 @@ Configuration and exact operating instructions are in the
 [native worker presence guide](docs/native-worker-presence.md). The worker also provides a
 token-free, read-only `spool-status` command for operator inspection of retained attempt paths
 and `spool-verify` for checking local measurement bytes against the runner receipt; neither
-recovers a lease. The client pins reviewed perfeng-contracts bundle 0.19.0
-for v2 presence, lease, artifact-publication and terminal fixtures. Configuration version 2
+recovers a lease. The token-authenticated, read-only `attempt-status` command inspects the
+control plane's state for one known Run and attempt without granting recovery authority.
+The client pins reviewed perfeng-contracts bundle 0.20.0
+for v2 presence, lease, artifact-publication, terminal and inspection fixtures. Configuration version 2
 reports baseline Chromium presence to `/native-worker/v2/presence`. A separate
 v2 acquisition transport can validate a server-issued lease against current
 qualification evidence. Renewal, release, upload-grant, artifact-registration and terminal-reporting
@@ -93,7 +95,8 @@ credential from JSON or a command-line argument. Its raw-result path constructs
 deterministic `raw-result/v2` bytes from matching measurements, immutable
 execution provenance, and lease-fenced registered evidence. It persists the manifest
 exclusively and publishes it through the v2 grant, transfer, and registration boundary.
-Manifests identify the reviewed 0.19.0 contracts bundle.
+Baseline manifests still identify the reviewed 0.19.0 recipe contract required by the
+control plane; the inspection API addition does not change their meaning.
 The one-shot CLI may execute work and advance the Run only after successful
 qualification and lease acquisition. Live Windows and control-plane acceptance
 remains a separate rollout gate.

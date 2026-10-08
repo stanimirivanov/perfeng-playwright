@@ -16,6 +16,8 @@
   it does not recover a lease.
 - `spool-verify` checks one retained measurement against its local receipt without claiming server
   authority, upload completion or a terminal outcome.
+- `attempt-status` reads one worker-scoped server snapshot by known Run and attempt ID; it never
+  restores lease authority or authorizes cleanup.
 
 The presence command is the first executable slice of the outbound native Windows agent selected
 by the Native Worker API architecture decision. It reports bounded capabilities and immutable
@@ -144,9 +146,11 @@ maintains presence and observes operator cancellation, but does not acquire or e
 Only the explicit `run-once` command temporarily reports `AVAILABLE` and invokes the complete
 v2 attempt coordinator. `authorizedToAcquire` alone remains server policy, not execution readiness.
 
-The vendored presence examples and lock under `vendor/contracts` pin byte-identical v2 fixtures from
-perfeng-contracts bundle 0.19.0. The v2 OpenAPI and example bytes are unchanged from 0.18.0;
-the new bundle retires Native Worker v1. The lock records the reviewed full v2 OpenAPI checksum.
+The vendored examples and lock under `vendor/contracts` pin byte-identical v2 fixtures from
+perfeng-contracts bundle 0.20.0, including the new attempt-inspection shapes. The lock records
+the reviewed full v2 OpenAPI checksum. Baseline raw results retain `contractsVersion: 0.19.0`
+because the control plane's current execution recipe requires that version; adopting the
+inspection API does not change existing measurement or manifest semantics.
 Updating the API requires an explicit contract repin and compatibility review rather than accepting
 a moving schema.
 
@@ -177,7 +181,7 @@ v2 endpoints. Registration refuses a mismatched grant before any network call. T
 terminal transport accepts v2 authority, posts to the v2 endpoint and
 checks the acknowledgement against the acquired attempt and expected Run revision. Raw-result
 construction and manifest publication also accept v2 authority: the builder checks measurements
-against the complete v2 recipe and uses the reviewed 0.19.0 bundle identity.
+against the complete v2 recipe and uses the reviewed 0.19.0 baseline identity.
 The worker rejects prerelease workload and environment-profile versions before execution because
 the current measurement and raw-result schemas permit only `major.minor.patch` values.
 The control plane's Run policy and runtime contracts version must also accept 0.19.0 before v2
@@ -373,3 +377,21 @@ does not validate measurement semantics against the original lease, prove upload
 resolve an uncertain terminal response, or authorize another acquisition. Reconcile the Run and
 attempt with the control plane before making any retention or restart decision. Protect the spool
 and its output because Run and attempt IDs may be sensitive.
+
+To read the control plane's worker-scoped view for a known Run and attempt, use the same reviewed
+HTTPS configuration and worker-audience token as presence:
+
+```powershell
+$env:PERFENG_NATIVE_WORKER_TOKEN = Read-Host "Native worker token" -MaskInput
+perfeng-playwright-worker attempt-status --config C:\path\to\native-worker-presence.json --run-id perf-20261007-120000-abcdef12 --attempt-id 22222222-2222-4222-8222-222222222222
+Remove-Item Env:PERFENG_NATIVE_WORKER_TOKEN
+```
+
+The result is either a validated `ACTIVE`, `INACTIVE` or `TERMINAL` snapshot, or `not-found`.
+`ACTIVE` is only a point-in-time lease observation. `INACTIVE` means that attempt's retained
+lease is released or expired, not that local or remote evidence is safe to delete. `TERMINAL`
+reflects an accepted terminal report. `not-found` deliberately does not distinguish an unknown
+attempt from one belonging to another worker. The command makes one bounded request, sends no
+`X-Perfeng-Lease` capability, ignores server error bodies, and does not inspect or alter the local
+spool. Compare its output with `spool-status` and `spool-verify` before a separately reviewed
+manual recovery decision; no response authorizes automatic cleanup, resumption or acquisition.
