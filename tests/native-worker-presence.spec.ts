@@ -337,9 +337,9 @@ test('pins byte-identical Native Worker presence fixtures', async () => {
     files: Record<string, string>;
   };
   expect(lock).toMatchObject({
-    v2SourceRevision: '48917099b522e769b8fe533a166089ae2cd8914d',
-    v2BundleVersion: '0.20.0',
-    nativeWorkerApiV2Version: '2.1.0',
+    v2SourceRevision: '143daa58774d8807f1745f8410ccab8b610170a0',
+    v2BundleVersion: '0.21.0',
+    nativeWorkerApiV2Version: '2.2.0',
   });
   for (const [path, expected] of Object.entries(lock.files)) {
     const bytes = await readFile(`vendor/contracts/${path}`);

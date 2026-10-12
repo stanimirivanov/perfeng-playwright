@@ -103,7 +103,7 @@ cancellation and shutdown attempts while authority remains proven. `run-once` ad
 gate, local owner marker and one immediate acquisition window. Read-only spool inspection,
 receipt-bound measurement verification and worker-scoped server attempt inspection support
 operator review but do not recover lease authority. Unattended acquisition and automatic restart
-recovery remain absent.
+recovery remain absent. Explicit `recover` owns availability withdrawal, current-slot and known-attempt reconciliation, and same-filesystem archival through a separate filesystem adapter. It preserves the old owner and evidence, requires operator process exclusion, and does not provision a fresh spool or acquire work.
 The complete worker loop should use an explicit transition model:
 
 ```text

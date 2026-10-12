@@ -105,3 +105,5 @@ How will assumptions and consequences be verified?
   — Accepted; supersedes ADR-0002
 - [ADR-0012: Run one Native Worker attempt with manual recovery](0012-run-one-native-attempt-with-manual-recovery.md)
   — Accepted
+- [ADR-0013: Preserve the Native Worker spool in explicit manual recovery](0013-preserve-native-spool-in-explicit-manual-recovery.md)
+  — Proposed
