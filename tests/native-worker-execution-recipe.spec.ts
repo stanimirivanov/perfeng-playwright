@@ -213,11 +213,11 @@ test('pins byte-identical v2 acquisition fixtures and reviewed OpenAPI identity'
     files: Record<string, string>;
   };
   expect(lock).toMatchObject({
-    v2SourceRevision: '48917099b522e769b8fe533a166089ae2cd8914d',
-    v2BundleVersion: '0.20.0',
-    nativeWorkerApiV2Version: '2.1.0',
+    v2SourceRevision: '143daa58774d8807f1745f8410ccab8b610170a0',
+    v2BundleVersion: '0.21.0',
+    nativeWorkerApiV2Version: '2.2.0',
     reviewedV2OpenApiSha256:
-      'ce55777c3cb3d0dee5e5d81820bd512757655d05c9c99997ceb2c31d366abdd6',
+      '149a1de3186c7bbad2c3543f90b32faf27883f58caa0331aa9223a6fc8149167',
   });
   for (const path of [
     'native-worker/v2/examples/acquire.json',

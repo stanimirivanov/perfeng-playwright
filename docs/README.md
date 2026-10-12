@@ -22,4 +22,6 @@
 
 ## Keeping this map useful
 
+Read [the manual recovery guide](native-worker-manual-recovery.md) before changing `recover` or its filesystem adapter. It owns process exclusion, server fencing, retained evidence preservation and fresh-spool provisioning.
+
 This map routes readers and does not duplicate canonical policy. `make docs-check` validates local links and repository policy structure. Captured evidence, generated output, reports, and machine-local browser state do not belong in documentation or Git.

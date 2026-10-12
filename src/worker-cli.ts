@@ -15,6 +15,10 @@ import {
   type NativeAttemptInspectionResult,
 } from './native-worker/attempt-inspection.js';
 import { runPresenceHeartbeat } from './native-worker/heartbeat.js';
+import {
+  recoverNativeWorkerManually,
+  type ManualRecoveryResult,
+} from './native-worker/manual-recovery.js';
 import { createWorkerPresence } from './native-worker/presence.js';
 import {
   runNativeWorkerOnce,
@@ -35,6 +39,11 @@ import type {
 } from './native-worker/types.js';
 
 export type { NativeRunOnceResult } from './native-worker/run-once.js';
+export type {
+  ManualRecoveryResult,
+  RetainedRecoveryObservation,
+} from './native-worker/manual-recovery.js';
+export type { NativeAttemptDiscovery } from './native-worker/attempt-discovery.js';
 export type { RetainedAttemptIntegrity } from './native-worker/retained-attempt.js';
 export type {
   NativeAttemptInspection,
@@ -46,13 +55,20 @@ const runnerCheckoutRoot = dirname(
   fileURLToPath(new URL('../package.json', import.meta.url)),
 );
 const usage =
-  'Usage: perfeng-playwright-worker <presence|heartbeat> --config FILE | spool-status --spool-root DIRECTORY | spool-verify --spool-root DIRECTORY --attempt NAME | attempt-status --config FILE --run-id ID --attempt-id UUID | run-once --config FILE --spool-root DIRECTORY --timeout-ms INTEGER';
+  'Usage: perfeng-playwright-worker <presence|heartbeat> --config FILE | spool-status --spool-root DIRECTORY | spool-verify --spool-root DIRECTORY --attempt NAME | attempt-status --config FILE --run-id ID --attempt-id UUID | run-once --config FILE --spool-root DIRECTORY --timeout-ms INTEGER | recover --config FILE --spool-root DIRECTORY --archive-root DIRECTORY --confirm-processes-stopped';
 
 /** Parsed action and configuration path accepted by the Native Worker executable. */
 export type WorkerCommand =
   | { action: 'presence' | 'heartbeat'; configurationPath: string }
   | { action: 'spool-status'; spoolRoot: string }
   | { action: 'spool-verify'; spoolRoot: string; attemptName: string }
+  | {
+      action: 'recover';
+      configurationPath: string;
+      spoolRoot: string;
+      archiveRoot: string;
+      processesStopped: true;
+    }
   | {
       action: 'attempt-status';
       configurationPath: string;
@@ -66,8 +82,30 @@ export type WorkerCommand =
       timeoutMilliseconds: number;
     };
 
-/** Parses Native Worker presence, execution and read-only spool commands. */
+/** Parses Native Worker commands, requiring explicit process exclusion for recovery. */
 export function parseWorkerCommand(args: string[]): WorkerCommand {
+  if (
+    args.length === 8 &&
+    args[0] === 'recover' &&
+    args[1] === '--config' &&
+    args[2] !== undefined &&
+    args[2] !== '' &&
+    args[3] === '--spool-root' &&
+    args[4] !== undefined &&
+    args[4] !== '' &&
+    args[5] === '--archive-root' &&
+    args[6] !== undefined &&
+    args[6] !== '' &&
+    args[7] === '--confirm-processes-stopped'
+  ) {
+    return {
+      action: 'recover',
+      configurationPath: args[2],
+      spoolRoot: args[4],
+      archiveRoot: args[6],
+      processesStopped: true,
+    };
+  }
   if (
     args.length === 7 &&
     args[0] === 'attempt-status' &&
@@ -142,7 +180,7 @@ export function parseWorkerCommand(args: string[]): WorkerCommand {
   return { action: args[0], configurationPath: args[2] };
 }
 
-/** Runs the selected Native Worker or read-only local inspection command. */
+/** Runs the selected Native Worker command; recovery preserves evidence in an explicit archive. */
 export async function workerMain(
   args: string[],
   environment: NodeJS.ProcessEnv = process.env,
@@ -153,6 +191,7 @@ export async function workerMain(
   | RetainedAttemptIntegrity
   | NativeAttemptInspectionResult
   | NativeRunOnceResult
+  | ManualRecoveryResult
   | undefined
 > {
   const command = parseWorkerCommand(args);
@@ -185,6 +224,21 @@ export async function workerMain(
     readWorkerPresenceConfiguration(command.configurationPath),
     readAgentVersion(),
   ]);
+  if (command.action === 'recover') {
+    return recoverNativeWorkerManually({
+      presence: await createWorkerPresenceFromCheckout(
+        configuration,
+        agentVersion,
+      ),
+      controlPlaneOrigin: configuration.controlPlaneOrigin,
+      token,
+      checkoutRoot: runnerCheckoutRoot,
+      spoolRoot: command.spoolRoot,
+      archiveRoot: command.archiveRoot,
+      processesStopped: command.processesStopped,
+      signal,
+    });
+  }
   if (command.action === 'run-once') {
     return runNativeWorkerOnce({
       presence: await createWorkerPresenceFromCheckout(
@@ -305,6 +359,7 @@ if (
     .then((status) => {
       if (status !== undefined) {
         process.stdout.write(`${JSON.stringify(status)}\n`);
+        if ('kind' in status && status.kind === 'BLOCKED') process.exitCode = 2;
       }
     })
     .catch((error: unknown) => {

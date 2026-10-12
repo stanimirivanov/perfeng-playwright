@@ -18,6 +18,8 @@
   authority, upload completion or a terminal outcome.
 - `attempt-status` reads one worker-scoped server snapshot by known Run and attempt ID; it never
   restores lease authority or authorizes cleanup.
+- `recover` provides explicit server-fenced archival, not automatic restart. Read the
+  [manual recovery guide](native-worker-manual-recovery.md) before invoking it.
 
 The presence command is the first executable slice of the outbound native Windows agent selected
 by the Native Worker API architecture decision. It reports bounded capabilities and immutable
@@ -393,5 +395,6 @@ lease is released or expired, not that local or remote evidence is safe to delet
 reflects an accepted terminal report. `not-found` deliberately does not distinguish an unknown
 attempt from one belonging to another worker. The command makes one bounded request, sends no
 `X-Perfeng-Lease` capability, ignores server error bodies, and does not inspect or alter the local
-spool. Compare its output with `spool-status` and `spool-verify` before a separately reviewed
-manual recovery decision; no response authorizes automatic cleanup, resumption or acquisition.
+spool. Compare its output with `spool-status` and `spool-verify` and follow the
+[explicit manual recovery procedure](native-worker-manual-recovery.md); no response authorizes
+automatic cleanup, resumption or acquisition.

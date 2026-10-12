@@ -83,8 +83,13 @@ token-free, read-only `spool-status` command for operator inspection of retained
 and `spool-verify` for checking local measurement bytes against the runner receipt; neither
 recovers a lease. The token-authenticated, read-only `attempt-status` command inspects the
 control plane's state for one known Run and attempt without granting recovery authority.
-The client pins reviewed perfeng-contracts bundle 0.20.0
-for v2 presence, lease, artifact-publication, terminal and inspection fixtures. Configuration version 2
+The explicit `recover` command withdraws availability, reconciles current capacity
+and retained attempts, and preserves the whole spool in an exclusive archive.
+It requires process-exclusion confirmation, never restores authority or deletes evidence,
+and leaves fresh-spool provisioning as a separate operator action. See the
+[manual recovery guide](docs/native-worker-manual-recovery.md).
+The client pins reviewed perfeng-contracts bundle 0.21.0 / Native Worker API 2.2.0
+for v2 presence, lease, artifact-publication, terminal, inspection and discovery fixtures. Configuration version 2
 reports baseline Chromium presence to `/native-worker/v2/presence`. A separate
 v2 acquisition transport can validate a server-issued lease against current
 qualification evidence. Renewal, release, upload-grant, artifact-registration and terminal-reporting
