@@ -17,7 +17,12 @@
 | Complete acceptance      | `make validate`           | Aggregate verification and supply-chain checks.                                                     |
 | Native worker acceptance | Focused Windows execution | Prove platform-specific worker and filesystem behavior on an authorized declared worker.            |
 
-The root Makefile and package scripts form one stable command surface. CI calls these targets and retains browser failure evidence. `make verify` is network-independent after bootstrap and never contacts an external test target.
+The root Makefile and package scripts form one stable command surface. CI runs
+functional checks on pinned Ubuntu 24.04 and Windows 2025 hosted images, and
+retains browser failure evidence. These hosts do not establish performance
+comparability with the declared native Windows reference worker. `make verify`
+is network-independent after bootstrap and never contacts an external test
+target.
 
 ## Architecture feedback
 
