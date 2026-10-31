@@ -107,3 +107,5 @@ How will assumptions and consequences be verified?
   — Accepted
 - [ADR-0013: Preserve the Native Worker spool in explicit manual recovery](0013-preserve-native-spool-in-explicit-manual-recovery.md)
   — Proposed
+
+| [0014](0014-support-linux-hosts.md) | Proposed | Support Linux development and native browser hosts; retire active Windows support. |

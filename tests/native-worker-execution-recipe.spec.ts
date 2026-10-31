@@ -82,7 +82,7 @@ test('projects the reviewed v2 lease into exact baseline runner configuration', 
     },
     diagnosticMode: 'baseline',
     environment: {
-      profile: { id: 'windows-mainstream', version: '1.0.0' },
+      profile: { id: 'linux-mainstream', version: '1.0.0' },
       fingerprint: '9'.repeat(64),
     },
     target: { baseUrl: 'https://sut.perfeng.invalid/' },
@@ -120,7 +120,7 @@ test('rejects incomplete, incompatible and worker-selected recipes before execut
   }
   for (const [path, value] of [
     [['assignment', 'recipe', 'journeyId'], 'arbitrary-command'],
-    [['assignment', 'profile'], 'windows-mainstream'],
+    [['assignment', 'profile'], 'linux-mainstream'],
     [['assignment', 'browser'], 'edge'],
     [['assignment', 'diagnosticMode'], 'trace'],
     [['assignment', 'recipe', 'scenario', 'measurementIterations'], 0],
@@ -213,11 +213,11 @@ test('pins byte-identical v2 acquisition fixtures and reviewed OpenAPI identity'
     files: Record<string, string>;
   };
   expect(lock).toMatchObject({
-    v2SourceRevision: '143daa58774d8807f1745f8410ccab8b610170a0',
-    v2BundleVersion: '0.21.0',
-    nativeWorkerApiV2Version: '2.2.0',
+    v2SourceRevision: '55d28f4f432825c1dc504ca0f03ee308e66fb62c',
+    v2BundleVersion: '0.27.0',
+    nativeWorkerApiV2Version: '2.3.0',
     reviewedV2OpenApiSha256:
-      '149a1de3186c7bbad2c3543f90b32faf27883f58caa0331aa9223a6fc8149167',
+      'a7fd9c27b145f118d0b1058b6e10b3581609b4dce8916f31a6e030fb08d56c45',
   });
   for (const path of [
     'native-worker/v2/examples/acquire.json',

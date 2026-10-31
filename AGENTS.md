@@ -43,7 +43,7 @@ performance verdicts.
   `browser-environment/v1` artifact and is never inferred by this runner.
 - Diagnostic traces, heap snapshots and observations remain raw evidence. The
   runner does not diagnose leaks, dropped frames or regressions.
-- The intended comparable execution environment is a declared native Windows
+- The intended comparable execution environment is a declared native Linux
   worker representing the chosen laptop profile. Linux CI proves correctness,
   not performance equivalence.
 

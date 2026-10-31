@@ -27,7 +27,6 @@ export type GitCommand = (arguments_: string[]) => Promise<string>;
 async function executeGit(root: string, arguments_: string[]): Promise<string> {
   const { stdout } = await execFileAsync('git', ['-C', root, ...arguments_], {
     encoding: 'utf8',
-    windowsHide: true,
     maxBuffer: 1024 * 1024,
   });
   return stdout;

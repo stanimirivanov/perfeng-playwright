@@ -40,7 +40,7 @@ interface WorkerPresenceFields {
 interface WorkerCapabilities {
   capacity: 1;
   tool: 'playwright';
-  operatingSystem: 'windows';
+  operatingSystem: 'linux';
   architecture: WorkerArchitecture;
   executionArtifacts: ['source-checkout'];
 }

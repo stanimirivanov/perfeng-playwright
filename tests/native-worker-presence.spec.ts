@@ -22,7 +22,7 @@ const configuration: WorkerPresenceConfiguration = {
   controlPlaneOrigin: 'https://control-plane.perfeng.invalid',
   browsers: ['chromium'],
   environment: {
-    id: 'windows-mainstream',
+    id: 'linux-mainstream',
     sha256: 'a'.repeat(64),
   },
 };
@@ -42,7 +42,7 @@ function presence(): WorkerPresence {
     configuration,
     source,
     agentVersion: '0.13.0',
-    platform: 'win32',
+    platform: 'linux',
     architecture: 'x64',
   });
 }
@@ -58,6 +58,18 @@ test('parses a closed worker presence configuration', () => {
   ).toThrow('Unsupported worker presence configuration schemaVersion');
 });
 
+test('refuses Windows presence instead of relabeling the host as Linux', () => {
+  expect(() =>
+    createWorkerPresence({
+      configuration,
+      source,
+      agentVersion: '0.13.0',
+      platform: 'win32',
+      architecture: 'x64',
+    }),
+  ).toThrow('requires Linux');
+});
+
 test('keeps the distributed v2 example valid and unavailable by construction', async () => {
   const example = await readFile(
     'examples/native-worker-presence.json',
@@ -70,7 +82,7 @@ test('keeps the distributed v2 example valid and unavailable by construction', a
       configuration: parsed,
       source,
       agentVersion: '0.13.0',
-      platform: 'win32',
+      platform: 'linux',
       architecture: 'x64',
     }).availability,
   ).toBe('UNAVAILABLE');
@@ -130,7 +142,7 @@ test('reports only the reviewed v2 baseline Chromium capabilities', async () => 
     configuration: configuration,
     source,
     agentVersion: '0.13.0',
-    platform: 'win32',
+    platform: 'linux',
     architecture: 'x64',
   });
   expect(actual).toEqual({
@@ -138,7 +150,7 @@ test('reports only the reviewed v2 baseline Chromium capabilities', async () => 
     agentVersion: '0.13.0',
     availability: 'UNAVAILABLE',
     qualificationEvidence: {
-      environmentId: 'windows-mainstream',
+      environmentId: 'linux-mainstream',
       environmentSha256: 'a'.repeat(64),
       runner: {
         kind: 'source-checkout',
@@ -160,7 +172,7 @@ test('posts v2 presence to the isolated endpoint and parses its acknowledgement'
     configuration: configuration,
     source,
     agentVersion: '0.13.0',
-    platform: 'win32',
+    platform: 'linux',
     architecture: 'x64',
   });
   const send = ((input: URL | RequestInfo, init?: RequestInit) => {
@@ -182,7 +194,7 @@ test('posts v2 presence to the isolated endpoint and parses its acknowledgement'
     },
     send,
   );
-  expect(status.workerId).toBe('windows-laptop-01');
+  expect(status.workerId).toBe('linux-workstation-01');
   expect(status.nextHeartbeatSeconds).toBe(30);
 });
 
@@ -337,9 +349,9 @@ test('pins byte-identical Native Worker presence fixtures', async () => {
     files: Record<string, string>;
   };
   expect(lock).toMatchObject({
-    v2SourceRevision: '143daa58774d8807f1745f8410ccab8b610170a0',
-    v2BundleVersion: '0.21.0',
-    nativeWorkerApiV2Version: '2.2.0',
+    v2SourceRevision: '55d28f4f432825c1dc504ca0f03ee308e66fb62c',
+    v2BundleVersion: '0.27.0',
+    nativeWorkerApiV2Version: '2.3.0',
   });
   for (const [path, expected] of Object.entries(lock.files)) {
     const bytes = await readFile(`vendor/contracts/${path}`);

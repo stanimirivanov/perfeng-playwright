@@ -17,7 +17,7 @@ const workerPresence: WorkerPresence = {
   capabilities: {
     capacity: 1,
     tool: 'playwright',
-    operatingSystem: 'windows',
+    operatingSystem: 'linux',
     architecture: 'x64',
     browsers: ['chromium'],
     runnerContract: 2,
@@ -26,7 +26,7 @@ const workerPresence: WorkerPresence = {
     diagnosticModes: ['baseline'],
   },
   qualificationEvidence: {
-    environmentId: 'windows-mainstream',
+    environmentId: 'linux-mainstream',
     environmentSha256: 'a'.repeat(64),
     runner: {
       kind: 'source-checkout',
@@ -39,7 +39,7 @@ const workerPresence: WorkerPresence = {
 };
 
 const presenceStatus: WorkerPresenceStatus = {
-  workerId: 'windows-laptop-01',
+  workerId: 'linux-workstation-01',
   serverTime: '2026-09-27T12:00:00Z',
   nextHeartbeatSeconds: 30,
   availability: 'UNAVAILABLE',

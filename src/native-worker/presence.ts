@@ -11,8 +11,8 @@ export function createWorkerPresence(inputs: PresenceInputs): WorkerPresence {
   if (!semanticVersionPattern.test(inputs.agentVersion)) {
     throw new Error('Native worker agent version is invalid');
   }
-  if (inputs.platform !== 'win32') {
-    throw new Error('Native worker presence requires Windows');
+  if (inputs.platform !== 'linux') {
+    throw new Error('Native worker presence requires Linux');
   }
   const architecture = workerArchitecture(inputs.architecture);
   const { configuration, source } = inputs;
@@ -36,7 +36,7 @@ export function createWorkerPresence(inputs: PresenceInputs): WorkerPresence {
     capabilities: {
       capacity: 1,
       tool: 'playwright',
-      operatingSystem: 'windows',
+      operatingSystem: 'linux',
       architecture,
       browsers: ['chromium'],
       runnerContract: 2,

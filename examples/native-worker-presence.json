@@ -3,7 +3,7 @@
   "controlPlaneOrigin": "https://control-plane.perfeng.invalid",
   "browsers": ["chromium"],
   "environment": {
-    "id": "windows-mainstream",
+    "id": "linux-mainstream",
     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   }
 }

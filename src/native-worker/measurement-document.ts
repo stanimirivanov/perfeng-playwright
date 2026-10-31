@@ -103,10 +103,10 @@ export function parseNativeV2Measurements(
     'architecture',
   ]);
   if (
-    runtime.platform !== 'win32' ||
+    runtime.platform !== 'linux' ||
     (runtime.architecture !== 'x64' && runtime.architecture !== 'arm64')
   ) {
-    throw new Error('Native measurements require a supported Windows runtime');
+    throw new Error('Native measurements require a supported Linux runtime');
   }
   const window = record(
     document.measurementWindow,
@@ -147,7 +147,7 @@ export function parseNativeV2Measurements(
         'nodeVersion',
         versionPattern,
       ),
-      platform: 'win32',
+      platform: 'linux',
       architecture: runtime.architecture,
     },
     browser: {

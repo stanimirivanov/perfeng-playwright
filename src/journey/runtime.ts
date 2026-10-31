@@ -6,12 +6,8 @@ const playwrightPackage = createRequire(import.meta.url)(
   '@playwright/test/package.json',
 ) as { version: string };
 
-export function runtimePlatform(): 'linux' | 'darwin' | 'win32' {
-  if (
-    process.platform === 'linux' ||
-    process.platform === 'darwin' ||
-    process.platform === 'win32'
-  ) {
+export function runtimePlatform(): 'linux' {
+  if (process.platform === 'linux') {
     return process.platform;
   }
   throw new Error(`Unsupported runtime platform: ${process.platform}`);

@@ -5,7 +5,7 @@
 - Measure semantic interactions with the browser Performance clock, not controller time.
 - Keep cold/warm lifecycle, environment identity and browser/runtime versions explicit.
 - Treat Linux CI as functional verification; comparable measurements come from the declared native
-  Windows reference worker.
+  Linux reference worker.
 - Keep lightweight observations, traces, heap snapshots and smoothness evidence separate from
   semantic measurements and verdicts.
 - Bound diagnostic time, memory and output, preserve partial/data-loss signals, and release CDP
@@ -67,10 +67,10 @@ speculative collector abstractions.
   headless mode, diagnostic mode and environment-profile identity.
 - Bind measurements to a separately captured `browser-environment/v1` artifact. The runner validates
   supplied identity but does not invent host characteristics.
-- The reference execution model is a native Windows worker configured to represent the chosen
+- The reference execution model is a native Linux worker configured to represent the chosen
   average laptop profile. Hardware, power plan, display/refresh configuration, browser channel,
   background load and worker version belong in that environment artifact or provisioning policy.
-- Linux CI proves deterministic functional behavior and packaging. It does not demonstrate Windows
+- Linux CI proves deterministic functional behavior and packaging. It does not demonstrate workstation
   timing equivalence or authorize cross-environment baseline comparison.
 - Browser, Playwright, Node, OS/driver or worker-image updates are measurement-environment changes
   and require explicit review, environment-version advancement and baseline policy consideration.
@@ -187,5 +187,5 @@ speculative collector abstractions.
 ## Required verification
 
 Install exact dependencies and the pinned Chromium build, then run the exact checks in CONTRIBUTING.
-Changes affecting native Windows execution also require focused verification on the declared worker;
+Changes affecting native Linux execution also require focused verification on the declared worker;
 Linux CI remains necessary but is not a substitute for environment-specific acceptance.

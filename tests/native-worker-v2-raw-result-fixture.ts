@@ -46,7 +46,7 @@ export async function nativeV2RawResultRequest(): Promise<
     runtime: {
       playwrightVersion: '1.62.1',
       nodeVersion: '24.13.0',
-      platform: 'win32',
+      platform: 'linux',
       architecture: 'x64',
     },
     browser: {
