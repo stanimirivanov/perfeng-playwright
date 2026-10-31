@@ -51,7 +51,7 @@ function options(
     pageReuse: 'per-iteration',
     diagnosticMode: 'baseline',
     environment: {
-      profile: { id: 'windows-mainstream', version: '1.0.0' },
+      profile: { id: 'linux-mainstream', version: '1.0.0' },
       fingerprint: 'f'.repeat(64),
     },
     warmupIterations: 1,

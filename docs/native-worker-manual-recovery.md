@@ -6,32 +6,32 @@
 - Stop and exclude every worker/browser process using the identity. Confirmation is an operator assertion, not a process scan.
 - Acknowledge UNAVAILABLE and inspect server capacity plus retained attempts. Current capacity blocks recovery; no capability is restored.
 - Preserve the whole spool in an exclusive same-filesystem archive, including incomplete evidence and the old owner marker.
-- Provision a fresh protected spool separately before another explicit `run-once`. Live Windows/control-plane acceptance remains an M03 gate.
+- Provision a fresh protected spool separately before another explicit `run-once`. Live Linux/control-plane acceptance remains an M03 gate.
 
 ## Preconditions
 
-Deploy discovery serialization to **all** control-plane writers first. The client pins contracts 0.21.0 / Native Worker API 2.2.0; unsupported routes fail closed. Captured baseline manifests retain their 0.19.0 recipe identity.
+Deploy discovery serialization to **all** control-plane writers first. The client pins contracts 0.27.0 / Native Worker API 2.3.0; unsupported routes fail closed. Captured baseline manifests retain their 0.19.0 recipe identity.
 
-Use a clean, reviewed, built Windows checkout and the same HTTPS configuration and worker-audience credential as the interrupted worker. An updated source may be unqualified for new work; acknowledged withdrawal and observation do not require acquisition qualification. Recovery does not check browser readiness or launch a browser.
+Use a clean, reviewed, built Linux checkout and the same HTTPS configuration and worker-audience credential as the interrupted worker. An updated source may be unqualified for new work; acknowledged withdrawal and observation do not require acquisition qualification. Recovery does not check browser readiness or launch a browser.
 
 Stop the old agent, heartbeat, runner and entire browser tree. Exclude other hosts, installations, scheduled tasks and sessions using that identity or writing to the spool. `--confirm-processes-stopped` is **not** a distributed lock or proof of termination. Shared credentials across running installations cannot satisfy this procedure. Do not kill unrelated browsers indiscriminately.
 
-Spool and archive roots must be existing absolute real directories on the same filesystem, separate from each other and the source checkout. Provision restrictive Windows ACLs on both roots; mode bits are not an ACL policy, and archive containers inherit their parent's ACLs. Unexpected top-level paths, nested links/junctions and special entries are rejected. Bounds are 32 retained attempts, 4,096 inventoried entries and 16 nested directory levels.
+Spool and archive roots must be existing absolute real directories on the same filesystem, separate from each other and the source checkout. Provision account-owned roots with mode `0700`; archive containers are created with mode `0700`. Unexpected top-level paths, nested links/junctions and special entries are rejected. Bounds are 32 retained attempts, 4,096 inventoried entries and 16 nested directory levels.
 
 ## Invoke recovery
 
 Build from the reviewed clean revision, provision a protected archive root on the spool's volume, then run:
 
-```powershell
-$env:PERFENG_NATIVE_WORKER_TOKEN = Read-Host "Native worker token" -MaskInput
+```sh
+read -rsp "Native worker token: " PERFENG_NATIVE_WORKER_TOKEN; printf "\n"; export PERFENG_NATIVE_WORKER_TOKEN
 try {
-  node dist/worker-cli.js recover `
-    --config C:\perfeng-config\native-worker-presence.json `
-    --spool-root C:\perfeng-spool `
-    --archive-root C:\perfeng-archives `
+  node dist/worker-cli.js recover \
+    --config /path/to/native-worker-presence.json \
+    --spool-root /path/to/perfeng-spool \
+    --archive-root /path/to/perfeng-archives \
     --confirm-processes-stopped
 } finally {
-  Remove-Item Env:PERFENG_NATIVE_WORKER_TOKEN
+  unset PERFENG_NATIVE_WORKER_TOKEN
 }
 ```
 
@@ -61,7 +61,7 @@ The destination container is exclusive: never reused, merged or replaced. There 
 
 The operator record contains server observations and local integrity outcomes; it is not a runner receipt, remote publication commitment or recovered authority. `unverified` means local measurement integrity could not be established, but those bytes remain preserved. `not-found` does not distinguish unknown from foreign ownership. NONE does not prove acquisition never succeeded. A verified receipt establishes local bytes only, not semantic validity, upload, registration or deletion permission.
 
-Review the archive and output. If another run is appropriate, provision a new empty dedicated spool with suitable ACLs and invoke `run-once` separately. Do not restore archived owner markers or attempt directories into it. Recovery itself never acquires work.
+Review the archive and output. If another run is appropriate, provision a new empty dedicated spool with account-private mode `0700` and invoke `run-once` separately. Do not restore archived owner markers or attempt directories into it. Recovery itself never acquires work.
 
 ## Failure: exit code 1
 
@@ -75,6 +75,6 @@ A crash may leave `.native-worker-recovery`. After proving process exclusion aga
 
 Nonce files coordinate cooperating invocations sharing the spool, not machines or hostile local writers. Metadata checks detect changes but are not an atomic tree snapshot. Protected roots and process exclusion must hold throughout. Rename preserves files but does not promise a power-loss-durable transaction with the operator record.
 
-Recovery does not normalize results, report terminal success, delete remote objects, change measurements or qualify a laptop. Windows tests exercise disposable filesystems and mocked protocol boundaries; `make validate` covers repository acceptance. Representative Windows/Chromium and live control-plane recovery remain the separate M03 completion gate.
+Recovery does not normalize results, report terminal success, delete remote objects, change measurements or qualify a laptop. Linux tests exercise disposable filesystems and mocked protocol boundaries; `make validate` covers repository acceptance. Representative Linux/Chromium and live control-plane recovery remain the separate M03 completion gate.
 
 See [ADR-0013](decisions/0013-preserve-native-spool-in-explicit-manual-recovery.md) and [presence and execution](native-worker-presence.md).

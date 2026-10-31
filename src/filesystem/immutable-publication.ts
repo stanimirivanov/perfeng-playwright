@@ -156,7 +156,7 @@ async function prepareDestinations(
     files.map(async ({ path }) => {
       const parent = await realpath(dirname(path));
       const key = join(parent, basename(path));
-      return process.platform === 'win32' ? key.toLowerCase() : key;
+      return key;
     }),
   );
   if (new Set(canonical).size !== canonical.length) {

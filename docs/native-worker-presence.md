@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-- Run presence from a clean, reviewed checkout in an interactive Windows session.
+- Run presence from a clean, reviewed checkout in an interactive Linux session.
 - Keep the endpoint and environment evidence in closed non-secret JSON; supply the worker-audience
   token through `PERFENG_NATIVE_WORKER_TOKEN` and use an HTTPS control-plane origin.
 - The worker reports baseline Chromium capability to `/native-worker/v2/presence` only.
@@ -21,7 +21,7 @@
 - `recover` provides explicit server-fenced archival, not automatic restart. Read the
   [manual recovery guide](native-worker-manual-recovery.md) before invoking it.
 
-The presence command is the first executable slice of the outbound native Windows agent selected
+The presence command is the first executable slice of the outbound native Linux agent selected
 by the Native Worker API architecture decision. It reports bounded capabilities and immutable
 qualification evidence to the control plane without opening an inbound listener or receiving
 Kubernetes or object-store credentials.
@@ -37,7 +37,7 @@ values differ. The closed document contains only non-secret values:
   "controlPlaneOrigin": "https://control-plane.perfeng.invalid",
   "browsers": ["chromium"],
   "environment": {
-    "id": "windows-mainstream",
+    "id": "linux-mainstream",
     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   }
 }
@@ -53,7 +53,7 @@ presence does not install or probe browsers in this slice.
 
 The command derives these values instead of accepting them from configuration:
 
-- Windows and the current `x64` or `arm64` process architecture;
+- Linux and the current `x64` or `arm64` process architecture;
 - capacity one and the Playwright tool identity;
 - source repository, exact Git revision, `pnpm-lock.yaml` path, and lock checksum from a clean
   checkout;
@@ -66,15 +66,15 @@ unknown configuration field fails before an HTTP request is made.
 ## Report presence once
 
 Build from the clean revision that will be reported. Load the distinct worker-audience credential
-from Windows Credential Manager or another operator-approved protected store into the process
-environment. For an interactive local check, PowerShell can prompt without placing the value in
+from an operator-approved Linux credential store into the process
+environment. For an interactive local check, Bash can prompt without placing the value in
 shell history:
 
-```powershell
+```sh
 pnpm build
-$env:PERFENG_NATIVE_WORKER_TOKEN = Read-Host "Native worker token" -MaskInput
-node dist/worker-cli.js presence --config C:\path\to\native-worker-presence.json
-Remove-Item Env:PERFENG_NATIVE_WORKER_TOKEN
+read -rsp "Native worker token: " PERFENG_NATIVE_WORKER_TOKEN; printf "\n"; export PERFENG_NATIVE_WORKER_TOKEN
+node dist/worker-cli.js presence --config /path/to/native-worker-presence.json
+unset PERFENG_NATIVE_WORKER_TOKEN
 ```
 
 The success output is the validated, non-secret server interpretation: worker ID, server time,
@@ -87,8 +87,8 @@ origin.
 
 Use the same reviewed configuration and protected process credential for the long-running mode:
 
-```powershell
-node dist/worker-cli.js heartbeat --config C:\path\to\native-worker-presence.json
+```sh
+node dist/worker-cli.js heartbeat --config /path/to/native-worker-presence.json
 ```
 
 The worker refreshes clean-checkout provenance before every report and schedules the next report
@@ -105,9 +105,9 @@ attention. Status output and retry messages contain no credentials or server res
 ## Execute one assigned attempt
 
 `run-once` is an explicit, single-attempt command, not a service. Use it only on a reviewed native
-Windows host with the matching built checkout, installed Chromium, an authorized target, a
+Linux host with the matching built checkout, installed Chromium, an authorized target, a
 compatible v2 control plane and a dedicated empty spool outside the checkout. Provision the spool
-with operator-controlled Windows ACLs; Node mode bits do not provide Windows access control.
+with account-private Linux permissions (`chmod 700` on spool and archive roots).
 The control-plane policy must approve the host evidence and the selected runner revision.
 Before reporting availability, the command rechecks that `dist/cli.js` is a regular local file,
 the checkout is clean and still matches the advertised repository, revision and lock checksum, and
@@ -115,12 +115,12 @@ the spool resolves outside that checkout. A failed preflight makes no server req
 owner marker. This does not prove the ignored build output matches the committed source or that
 Chromium is installed; build from the reviewed checkout and verify the host separately.
 
-```powershell
+```sh
 pnpm build
-New-Item -ItemType Directory C:\perfeng-native-spool
-$env:PERFENG_NATIVE_WORKER_TOKEN = Read-Host "Native worker token" -MaskInput
-node dist/worker-cli.js run-once --config C:\path\to\native-worker-presence.json --spool-root C:\perfeng-native-spool --timeout-ms 600000
-Remove-Item Env:PERFENG_NATIVE_WORKER_TOKEN
+mkdir -m 700 /path/to/perfeng-native-spool
+read -rsp "Native worker token: " PERFENG_NATIVE_WORKER_TOKEN; printf "\n"; export PERFENG_NATIVE_WORKER_TOKEN
+node dist/worker-cli.js run-once --config /path/to/native-worker-presence.json --spool-root /path/to/perfeng-native-spool --timeout-ms 600000
+unset PERFENG_NATIVE_WORKER_TOKEN
 ```
 
 Create the spool directory only if it does not already exist, and use an empty dedicated directory
@@ -149,7 +149,7 @@ Only the explicit `run-once` command temporarily reports `AVAILABLE` and invokes
 v2 attempt coordinator. `authorizedToAcquire` alone remains server policy, not execution readiness.
 
 The vendored examples and lock under `vendor/contracts` pin byte-identical v2 fixtures from
-perfeng-contracts bundle 0.20.0, including the new attempt-inspection shapes. The lock records
+perfeng-contracts bundle 0.27.0, including the new attempt-inspection shapes. The lock records
 the reviewed full v2 OpenAPI checksum. Baseline raw results retain `contractsVersion: 0.19.0`
 because the control plane's current execution recipe requires that version; adopting the
 inspection API does not change existing measurement or manifest semantics.
@@ -160,7 +160,7 @@ The same lock pins the Native Worker v2 acquisition and lease examples. The pure
 verifies the closed baseline Chromium lease, exact two-slot artifact plan, supported search journey, and
 current host and runner qualification evidence. It projects the reviewed values into the existing
 runner configuration without choosing cache, repetition, environment or browser defaults. The
-SUT target environment ID remains distinct from the qualified Windows host profile ID. This
+SUT target environment ID remains distinct from the qualified Linux host profile ID. This
 parser itself does not contact the control plane or launch a browser. The separate v2 acquisition
 transport sends the closed v2 request to `/native-worker/v2/leases`, bounds the long poll, distinguishes
 `204` idle from a `200` lease, and parses the lease against current qualification evidence before
@@ -188,7 +188,7 @@ The worker rejects prerelease workload and environment-profile versions before e
 the current measurement and raw-result schemas permit only `major.minor.patch` values.
 The control plane's Run policy and runtime contracts version must also accept 0.19.0 before v2
 issuance is enabled; a control plane pinned to an older bundle rejects the v2 manifest.
-The one-shot CLI can execute one assigned attempt. Server issuance and live Windows use require
+The one-shot CLI can execute one assigned attempt. Server issuance and live Linux use require
 an explicit rollout review; this change does not establish unattended operational readiness.
 
 The current plan requires `playwright-measurements/v2` for the `measurements` slot and
@@ -272,12 +272,11 @@ and heartbeat do not call them.
 The runner subprocess adapter now accepts a caller-reviewed executable, arguments, working directory,
 explicit environment, cancellation signal and bounded timeout. It does not use a shell or inherit
 output streams. Cancellation and timeout stop the owned process tree and wait for the direct child to
-close before returning. On Windows this uses `taskkill /T /F`; on POSIX it signals the dedicated
-process group. A failed tree-stop operation is reported as a termination failure, not as a completed
+close before returning. On Linux it signals the dedicated process group. A failed tree-stop operation is reported as a termination failure, not as a completed
 cancellation. The adapter does not validate the selected runner revision or prepare per-attempt
 configuration; those remain lifecycle-coordinator responsibilities. In particular, the runner must
 keep its browser descendants owned until its own exit. This boundary has process-level tests on the
-development host, but still needs representative Windows/Chromium verification before unattended
+development host, but still needs representative Linux/Chromium verification before unattended
 worker rollout.
 
 V2 attempt preparation verifies the current clean source checkout against the assigned runner
@@ -290,8 +289,7 @@ reviewed Node executable and entry point are selected. Neither worker credential
 lease capability are written to the
 configuration. An existing attempt directory is never reused, replaced or removed automatically.
 If preparation fails after directory creation, retain that directory for inspection; restart
-recovery and cleanup policy belong to the lifecycle coordinator. Windows directory mode bits are
-not an access-control policy, so the operator must provision a spool root with suitable ACLs.
+recovery and cleanup policy belong to the lifecycle coordinator. The operator must provision an account-owned spool root with mode `0700`.
 
 Before a baseline measurement file can be offered for upload, local artifact verification requires
 the runner's committed receipt. It verifies the receipt's Run, test and source-checkout identity
@@ -367,8 +365,8 @@ so this is not an acquisition lock. See
 
 For one attempt listed by `spool-status`, verify the runner-committed local measurement bytes:
 
-```powershell
-perfeng-playwright-worker spool-verify --spool-root C:\perfeng-spool --attempt perf-20261007-120000-abcdef12-22222222-2222-4222-8222-222222222222
+```sh
+perfeng-playwright-worker spool-verify --spool-root /path/to/perfeng-spool --attempt perf-20261007-120000-abcdef12-22222222-2222-4222-8222-222222222222
 ```
 
 This read-only command requires a bounded regular configuration, receipt and measurement file.
@@ -383,10 +381,10 @@ and its output because Run and attempt IDs may be sensitive.
 To read the control plane's worker-scoped view for a known Run and attempt, use the same reviewed
 HTTPS configuration and worker-audience token as presence:
 
-```powershell
-$env:PERFENG_NATIVE_WORKER_TOKEN = Read-Host "Native worker token" -MaskInput
-perfeng-playwright-worker attempt-status --config C:\path\to\native-worker-presence.json --run-id perf-20261007-120000-abcdef12 --attempt-id 22222222-2222-4222-8222-222222222222
-Remove-Item Env:PERFENG_NATIVE_WORKER_TOKEN
+```sh
+read -rsp "Native worker token: " PERFENG_NATIVE_WORKER_TOKEN; printf "\n"; export PERFENG_NATIVE_WORKER_TOKEN
+perfeng-playwright-worker attempt-status --config /path/to/native-worker-presence.json --run-id perf-20261007-120000-abcdef12 --attempt-id 22222222-2222-4222-8222-222222222222
+unset PERFENG_NATIVE_WORKER_TOKEN
 ```
 
 The result is either a validated `ACTIVE`, `INACTIVE` or `TERMINAL` snapshot, or `not-found`.

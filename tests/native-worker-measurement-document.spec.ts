@@ -48,7 +48,7 @@ test('rejects foreign identity, invalid runtime, and unknown payload fields', as
     },
     {
       ...measurements,
-      runtime: { ...measurements.runtime, platform: 'linux' },
+      runtime: { ...measurements.runtime, platform: 'win32' },
     },
     { ...measurements, unexpected: true },
   ]) {

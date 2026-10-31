@@ -8,7 +8,7 @@
   diagnostics without issuing performance verdicts.
 - Produces immutable measurement, diagnostic and provenance receipts; upload and analysis remain
   separate platform responsibilities.
-- Comparable performance runs target the declared native Windows laptop worker; Linux CI verifies
+- Comparable performance runs target the declared native Linux laptop worker; Linux CI verifies
   behavior but is not a performance-equivalent environment.
 - Uses Node.js 24.18.0, pnpm 11.19.0 and Playwright 1.62.1. Run `make validate` or `pnpm validate`.
 
@@ -68,7 +68,7 @@ and video in ignored local output directories; CI uploads that evidence only whe
 ## Native worker presence
 
 The separately packaged `perfeng-playwright-worker` command can authenticate a
-clean Windows source checkout and report its current capabilities and immutable
+clean Linux source checkout and report its current capabilities and immutable
 qualification evidence to the Native Worker API. It supports presence checks, a
 cancellable heartbeat, and an explicit `run-once` command. Presence and heartbeat
 always report `UNAVAILABLE`. `run-once` briefly offers `AVAILABLE`, acquires at most
@@ -88,7 +88,7 @@ and retained attempts, and preserves the whole spool in an exclusive archive.
 It requires process-exclusion confirmation, never restores authority or deletes evidence,
 and leaves fresh-spool provisioning as a separate operator action. See the
 [manual recovery guide](docs/native-worker-manual-recovery.md).
-The client pins reviewed perfeng-contracts bundle 0.21.0 / Native Worker API 2.2.0
+The client pins reviewed perfeng-contracts bundle 0.27.0 / Native Worker API 2.3.0
 for v2 presence, lease, artifact-publication, terminal, inspection and discovery fixtures. Configuration version 2
 reports baseline Chromium presence to `/native-worker/v2/presence`. A separate
 v2 acquisition transport can validate a server-issued lease against current
@@ -103,7 +103,7 @@ exclusively and publishes it through the v2 grant, transfer, and registration bo
 Baseline manifests still identify the reviewed 0.19.0 recipe contract required by the
 control plane; the inspection API addition does not change their meaning.
 The one-shot CLI may execute work and advance the Run only after successful
-qualification and lease acquisition. Live Windows and control-plane acceptance
+qualification and lease acquisition. Live Linux and control-plane acceptance
 remains a separate rollout gate.
 
 ## Semantic measurements

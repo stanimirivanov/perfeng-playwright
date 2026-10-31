@@ -178,7 +178,7 @@ mutations MUST remain within requested scope and authority.
 Run `make bootstrap` once, `make verify` for the network-independent inner loop, and
 `make validate` for complete acceptance. The exact commands and prerequisites are inventoried in
 the [harness guide](docs/development/harness.md). Browser tests prove functional behavior on the
-executing host; they do not establish that Linux CI and the native Windows reference worker produce
+executing host; they do not establish that Linux CI and the native Linux reference worker produce
 comparable performance measurements.
 
 When a check cannot run because of sandbox, platform, network, credentials, browser installation

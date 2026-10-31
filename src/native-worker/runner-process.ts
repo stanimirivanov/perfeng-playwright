@@ -1,4 +1,4 @@
-import { execFile, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 
 const maximumExecutionMilliseconds = 4 * 60 * 60 * 1_000;
 const terminationWaitMilliseconds = 10_000;
@@ -42,8 +42,8 @@ export function validateNativeRunnerTimeout(timeoutMilliseconds: number): void {
  * Runs one reviewed runner command without a shell or inherited output streams.
  *
  * The caller owns command and environment validation. Cancellation waits for
- * process-tree termination before it settles. On Windows this uses taskkill's
- * child-tree mode; on POSIX the child leads a dedicated process group.
+ * process-tree termination before it settles. The child leads a dedicated Linux
+ * process group.
  */
 export async function runNativeRunnerProcess(
   request: NativeRunnerProcessRequest,
@@ -60,10 +60,9 @@ export async function runNativeRunnerProcess(
     child = spawn(request.executable, [...request.arguments], {
       cwd: request.workingDirectory,
       env: request.environment,
-      detached: process.platform !== 'win32',
+      detached: true,
       shell: false,
       stdio: 'ignore',
-      windowsHide: true,
     });
   } catch {
     throw new NativeRunnerProcessFailure('launch');
@@ -106,7 +105,7 @@ export async function runNativeRunnerProcess(
     }
     const failureKind = cancellationKind(request.signal);
     try {
-      await terminateProcessTree(pid);
+      terminateProcessTree(pid);
       await waitForClose(closed);
     } catch {
       throw new NativeRunnerProcessFailure('termination');
@@ -119,35 +118,14 @@ export async function runNativeRunnerProcess(
   }
 }
 
-async function terminateProcessTree(pid: number): Promise<void> {
-  if (process.platform !== 'win32') {
-    try {
-      process.kill(-pid, 'SIGKILL');
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ESRCH') {
-        throw error;
-      }
+function terminateProcessTree(pid: number): void {
+  try {
+    process.kill(-pid, 'SIGKILL');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') {
+      throw error;
     }
-    return;
   }
-  await new Promise<void>((resolve, reject) => {
-    execFile(
-      'taskkill',
-      ['/PID', String(pid), '/T', '/F'],
-      {
-        windowsHide: true,
-        timeout: terminationWaitMilliseconds,
-        maxBuffer: 4096,
-      },
-      (error) => {
-        if (error === null) {
-          resolve();
-        } else {
-          reject(new NativeRunnerProcessFailure('termination'));
-        }
-      },
-    );
-  });
 }
 
 async function waitForClose(closed: Promise<number | null>): Promise<void> {

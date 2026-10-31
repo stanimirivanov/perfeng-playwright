@@ -29,7 +29,7 @@ Assumptions and unresolved questions:
 - [ ] Strict TypeScript compilation
 - [ ] Distributable package build
 - [ ] Playwright browser tests
-- [ ] Native Windows worker checks where applicable
+- [ ] Native Linux worker checks where applicable
 
 Commands and non-secret evidence:
 

@@ -17,7 +17,7 @@
   "diagnosticMode": "baseline",
   "environment": {
     "profile": {
-      "id": "windows-mainstream",
+      "id": "linux-mainstream",
       "version": "1.0.0"
     },
     "fingerprint": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"

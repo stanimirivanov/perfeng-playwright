@@ -58,7 +58,7 @@ async function setup(base: string): Promise<{
       expect(offered.availability).toBe('UNAVAILABLE');
       expect(signal).toBeInstanceOf(AbortSignal);
       const status: WorkerPresenceStatus = {
-        workerId: 'windows-laptop-01',
+        workerId: 'linux-workstation-01',
         serverTime: '2026-09-18T12:00:00Z',
         nextHeartbeatSeconds: 30,
         availability: 'UNAVAILABLE',

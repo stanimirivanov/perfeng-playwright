@@ -35,7 +35,7 @@ export function validateV2MeasurementIdentity(
       configuration.environment.profile.version &&
     measurements.environment.fingerprint ===
       configuration.environment.fingerprint &&
-    measurements.runtime.platform === 'win32';
+    measurements.runtime.platform === 'linux';
   const browserMatches =
     measurements.browser.name === 'chromium' &&
     measurements.browser.headless === configuration.browser.headless &&

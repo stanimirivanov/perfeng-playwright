@@ -53,7 +53,7 @@ function runnerConfiguration(
     diagnosticMode,
     ...(diagnostics === undefined ? {} : { diagnostics }),
     environment: {
-      profile: { id: 'windows-mainstream', version: '1.0.0' },
+      profile: { id: 'linux-mainstream', version: '1.0.0' },
       fingerprint: 'f'.repeat(64),
     },
     target: { baseUrl: 'http://127.0.0.1:4173/' },

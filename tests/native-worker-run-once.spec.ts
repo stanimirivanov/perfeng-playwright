@@ -56,7 +56,7 @@ function status(
   qualified = true,
 ): WorkerPresenceStatus {
   return {
-    workerId: 'windows-laptop-01',
+    workerId: 'linux-workstation-01',
     serverTime: '2026-10-07T12:00:00Z',
     nextHeartbeatSeconds: 30,
     availability,
@@ -85,7 +85,7 @@ function ports(
     acquireLease: (request) => {
       expect(request.maxWaitSeconds).toBe(0);
       expect(request.currentEvidence).toEqual({
-        environmentId: 'windows-mainstream',
+        environmentId: 'linux-mainstream',
         environmentSha256: 'a'.repeat(64),
         runner: authority.recipe.executionArtifact,
       });

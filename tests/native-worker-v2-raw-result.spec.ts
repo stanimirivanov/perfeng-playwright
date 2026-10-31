@@ -16,7 +16,7 @@ test('constructs deterministic v2 raw-result bytes from the reviewed recipe', as
   const lock = JSON.parse(
     await readFile('vendor/contracts/lock.json', 'utf8'),
   ) as { v2BundleVersion: string };
-  expect(lock.v2BundleVersion).toBe('0.21.0');
+  expect(lock.v2BundleVersion).toBe('0.27.0');
   expect(manifest.contractsVersion).toBe('0.19.0');
 
   expect(manifest).toMatchObject({
@@ -84,7 +84,7 @@ test('rejects measurements that differ from the v2 execution recipe', async () =
     },
     {
       ...measurements,
-      runtime: { ...measurements.runtime, platform: 'linux' as const },
+      runtime: { ...measurements.runtime, platform: 'win32' as const },
     },
   ];
   for (const candidate of cases) {
