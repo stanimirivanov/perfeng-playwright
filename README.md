@@ -338,3 +338,27 @@ and one placeholder title assertion. This repository does not retain Nx or the
 placeholder because neither defines useful performance behavior. The initial
 commit in this repository remains its history boundary; no orchestration or
 monorepo configuration is copied here.
+
+## Shadow the Native Worker contract distribution
+
+`make contracts-shadow` is an offline check. It restores the authenticated
+materializer, verifies the pinned historical Native Worker profile, then checks
+the vendored fixtures and reviewed OpenAPI digest against a temporary
+projection. The raw-result wire version remains `0.19.0` and is covered by
+`tests/native-worker-v2-raw-result.spec.ts`.
+
+Use a reviewed, bootstrapped `perfeng-environment` checkout for the materializer
+bootstrap and a separately qualified GitHub CLI verifier. Prepare the release
+assets in a private directory before running the gate:
+
+```sh
+assets=$(mktemp -d)
+lock=contracts-distribution.lock.json
+gh release download "$(jq -er .toolRelease "$lock")" \
+  --repo stanimirivanov/perfeng-environment --dir "$assets/tool"
+gh release download "$(jq -er .historyRelease "$lock")" \
+  --repo stanimirivanov/perfeng-contracts --dir "$assets/history"
+make contracts-shadow CONTRACTS_SHADOW_ASSETS="$assets" \
+  CONTRACTS_BOOTSTRAP_ROOT=/path/to/reviewed/perfeng-environment \
+  CONTRACTS_VERIFIER=/path/to/qualified/gh
+```
