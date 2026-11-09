@@ -1,0 +1,21 @@
+{
+  "toolRelease": "contract-materializer-v1-22e630bbf4d278f2fcc562d1e76d4aded1fcdd72",
+  "historyRelease": "contract-history-42672401359",
+  "tool": {
+    "sourceDigest": "22e630bbf4d278f2fcc562d1e76d4aded1fcdd72",
+    "signerDigest": "22e630bbf4d278f2fcc562d1e76d4aded1fcdd72",
+    "platform": "linux-x86_64",
+    "archiveSha256": "724a1c54fe300b2e06c621151b97f9173698891e103512f4b1eeda6296407bd9"
+  },
+  "nativeWorker": {
+    "revision": "55d28f4f432825c1dc504ca0f03ee308e66fb62c",
+    "bundleVersion": "0.27.0",
+    "policy": {
+      "manifestSha256": "bdd8e0fc5034f193ce81c71f9c2dc81410bcc572245872d930d4d705dda9265e",
+      "sourceDigest": "52c72f3cefefadef697b0b55cbf4f77ca7b4a118",
+      "signerDigest": "52c72f3cefefadef697b0b55cbf4f77ca7b4a118",
+      "sourceRef": "refs/heads/main",
+      "signerWorkflow": "stanimirivanov/perfeng-contracts/.github/workflows/contracts-publish.yml"
+    }
+  }
+}

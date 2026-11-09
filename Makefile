@@ -11,6 +11,7 @@ help:
 	@echo "  make check      Run formatting, linting, documentation and strict type checks"
 	@echo "  make test       Run Playwright browser tests"
 	@echo "  make build      Build the distributable library and CLI"
+	@echo "  make contracts-shadow  Compare the signed Native Worker fixtures offline"
 	@echo "  make verify     Run the network-independent inner loop"
 	@echo "  make supply-chain  Audit the complete dependency graph"
 	@echo "  make validate   Run complete repository acceptance"
@@ -55,3 +56,7 @@ supply-chain:
 	pnpm audit --audit-level high
 
 validate: verify supply-chain
+
+.PHONY: contracts-shadow
+contracts-shadow:
+	@node tools/contracts-distribution.ts
