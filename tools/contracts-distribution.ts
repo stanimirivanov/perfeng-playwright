@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const vendorRoot = 'vendor/contracts';
@@ -121,6 +121,35 @@ export function verifyProjection(
   return Object.keys(lock.files).length;
 }
 
+export function stageNativeFixtures(
+  target: string,
+  ledger: Buffer,
+  projected: ReadBytes,
+): void {
+  const lock = JSON.parse(ledger.toString('utf8')) as NativeLock;
+  const selection = nativeSelection(lock);
+  const files = Object.entries(selection.members)
+    .filter(([path]) => path !== openapi)
+    .map(([path, member]) => {
+      const bytes = projected(path);
+      if (!bytes || sha256(bytes) !== member.sha256)
+        throw new Error(`Projected digest differs for ${path}`);
+      return [path.slice('api/'.length), bytes] as const;
+    });
+  mkdirSync(target, { mode: 0o700 });
+  try {
+    for (const [path, bytes] of files) {
+      const output = join(target, path);
+      mkdirSync(dirname(output), { recursive: true });
+      writeFileSync(output, bytes, { flag: 'wx' });
+    }
+    writeFileSync(join(target, 'lock.json'), ledger, { flag: 'wx' });
+  } catch (error) {
+    rmSync(target, { recursive: true, force: true });
+    throw error;
+  }
+}
+
 interface DistributionLock {
   toolRelease: string;
   historyRelease: string;
@@ -147,13 +176,12 @@ function writeJson(path: string, value: object): void {
   writeFileSync(path, JSON.stringify(value), { flag: 'wx' });
 }
 
-function shadow() {
+function shadow(target?: string) {
   const distribution = JSON.parse(
     readFileSync('contracts-distribution.lock.json', 'utf8'),
   ) as DistributionLock;
-  const lock = JSON.parse(
-    readFileSync(join(vendorRoot, 'lock.json'), 'utf8'),
-  ) as NativeLock;
+  const ledger = readFileSync(join(vendorRoot, 'lock.json'));
+  const lock = JSON.parse(ledger.toString('utf8')) as NativeLock;
   if (
     distribution.nativeWorker.revision !== lock.v2SourceRevision ||
     distribution.nativeWorker.bundleVersion !== lock.v2BundleVersion
@@ -248,8 +276,12 @@ function shadow() {
         (name) => `native-worker/v2/examples/${name}`,
       ),
     );
+    if (target)
+      stageNativeFixtures(target, ledger, (path) =>
+        readFileSync(join(projection, path)),
+      );
     return {
-      status: 'passed',
+      status: target ? 'prepared' : 'passed',
       toolRelease: distribution.toolRelease,
       historyRelease: distribution.historyRelease,
       manifestSha256: distribution.nativeWorker.policy.manifestSha256,
@@ -264,7 +296,14 @@ function shadow() {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
-    console.log(JSON.stringify(shadow(), null, 2));
+    const [mode, target, ...extra] = process.argv.slice(2);
+    if (
+      extra.length ||
+      (mode !== undefined && (mode !== '--target' || !target))
+    ) {
+      throw new Error('Use --target with a fresh staging directory');
+    }
+    console.log(JSON.stringify(shadow(target), null, 2));
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

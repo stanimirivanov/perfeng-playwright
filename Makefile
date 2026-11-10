@@ -60,3 +60,11 @@ validate: verify supply-chain
 .PHONY: contracts-shadow
 contracts-shadow:
 	@node tools/contracts-distribution.ts
+
+.PHONY: contracts-update-check contracts-package-check
+contracts-update-check:
+	@test -n "$(CONTRACTS_STAGING_TARGET)"
+	@node tools/contracts-distribution.ts --target "$(CONTRACTS_STAGING_TARGET)"
+
+contracts-package-check:
+	@node tools/contracts-package.ts "$(CONTRACTS_CURRENT_PACKAGE)" "$(CONTRACTS_ROLLBACK_PACKAGE)" "$(CONTRACTS_ROLLBACK_SHA256)"

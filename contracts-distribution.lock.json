@@ -1,11 +1,11 @@
 {
-  "toolRelease": "contract-materializer-v1-22e630bbf4d278f2fcc562d1e76d4aded1fcdd72",
+  "toolRelease": "contract-materializer-v1-bf00cff3dc7b83fc8474324159fbfe69ba6c842d",
   "historyRelease": "contract-history-42672401359",
   "tool": {
-    "sourceDigest": "22e630bbf4d278f2fcc562d1e76d4aded1fcdd72",
-    "signerDigest": "22e630bbf4d278f2fcc562d1e76d4aded1fcdd72",
-    "platform": "linux-x86_64",
-    "archiveSha256": "724a1c54fe300b2e06c621151b97f9173698891e103512f4b1eeda6296407bd9"
+    "sourceDigest": "bf00cff3dc7b83fc8474324159fbfe69ba6c842d",
+    "signerDigest": "bf00cff3dc7b83fc8474324159fbfe69ba6c842d",
+    "archiveSha256": "20cedf8ab549f3ccdfbbf87d7f5c980fb85e2c468b5680c58e27fe28a78c87d2",
+    "platform": "linux-x86_64"
   },
   "nativeWorker": {
     "revision": "55d28f4f432825c1dc504ca0f03ee308e66fb62c",
