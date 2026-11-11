@@ -341,6 +341,8 @@ monorepo configuration is copied here.
 
 ## Shadow the Native Worker contract distribution
 
+Prepare updates and rehearse rollback using the [signed distribution workflow](docs/development/contract-distribution.md).
+
 `make contracts-shadow` is an offline check. It restores the authenticated
 materializer, verifies the pinned historical Native Worker profile, then checks
 the vendored fixtures and reviewed OpenAPI digest against a temporary
