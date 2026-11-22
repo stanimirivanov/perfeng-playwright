@@ -19,17 +19,17 @@
 
 Lowercase guidance does not silently create another normative level.
 
-| Concern                                                       | Canonical source                                                                                                          |
-| :------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------ |
-| Contributor requirements and verification | This document                                                                                                             |
-| Concise contributor and agent entry point                     | [AGENTS.md](AGENTS.md)                                                                                                    |
-| Task-oriented documentation routing                           | [docs/README.md](docs/README.md)                                                                                          |
-| Coding harness and verification tiers                         | [docs/development/harness.md](docs/development/harness.md)                                                                |
-| Browser-runner and TypeScript engineering                     | [docs/development/engineering-standards.md](docs/development/engineering-standards.md)                                    |
-| Dependency admission and supply chain                         | [docs/development/dependency-policy.md](docs/development/dependency-policy.md)                                            |
-| Architecture decisions                                        | [docs/decisions](docs/decisions/README.md)                                                                                |
-| Cross-repository milestones                                   | [perfeng-environment roadmap](https://github.com/stanimirivanov/perfeng-environment/blob/main/docs/roadmap/milestones.md) |
-| Supported behavior, diagnostics and exact commands            | [README.md](README.md)                                                                                                    |
+| Concern                                            | Canonical source                                                                                                          |
+| :------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| Contributor requirements and verification          | This document                                                                                                             |
+| Concise contributor and agent entry point          | [AGENTS.md](AGENTS.md)                                                                                                    |
+| Task-oriented documentation routing                | [docs/README.md](docs/README.md)                                                                                          |
+| Coding harness and verification tiers              | [docs/development/harness.md](docs/development/harness.md)                                                                |
+| Browser-runner and TypeScript engineering          | [docs/development/engineering-standards.md](docs/development/engineering-standards.md)                                    |
+| Dependency admission and supply chain              | [docs/development/dependency-policy.md](docs/development/dependency-policy.md)                                            |
+| Architecture decisions                             | [docs/decisions](docs/decisions/README.md)                                                                                |
+| Cross-repository milestones                        | [perfeng-environment roadmap](https://github.com/stanimirivanov/perfeng-environment/blob/main/docs/roadmap/milestones.md) |
+| Supported behavior, diagnostics and exact commands | [README.md](README.md)                                                                                                    |
 
 When sources conflict, the narrower source governs its concern. An accepted ADR governs its
 decision until superseded. Surface unresolved conflict rather than quietly choosing the convenient
