@@ -1,31 +1,23 @@
-# Repository working agreement
+# Repository agent guide
 
-## TL;DR
+## Agent skills
 
-- Read `CONTRIBUTING.md`; it is the canonical workflow policy.
-- Preserve semantic browser timing, environment identity, and cold/warm profile meaning.
-- Keep measurements, diagnostics, artifact persistence, and analysis verdicts separate.
-- Run the exact checks and report their results honestly.
+Use `mattpocock/skills` as the primary workflow for planning, ticketing,
+implementation, TDD, review, and pull requests. The skills take precedence where
+contributor guidance covers the same steps. Follow the repository's technical
+requirements, CI gates, and authorization boundaries.
 
-This file is the concise, tool-facing entry point for contributors and coding
-agents. [CONTRIBUTING.md](CONTRIBUTING.md) is the canonical workflow policy.
-Normative terms such as MUST, SHOULD and MAY have the meanings defined there.
+### Issue tracker
 
-## Before changing anything
+Use GitHub Issues in `stanimirivanov/perfeng-playwright`. See [issue tracker configuration](docs/agents/issue-tracker.md).
 
-1. You MUST read [CONTRIBUTING.md](CONTRIBUTING.md), especially its ambiguity,
-   issue-timing, verification and external-side-effect rules.
-2. You MUST inspect the branch and working tree and preserve pre-existing work.
-3. You MUST use the [documentation map](docs/README.md) to select the relevant
-   engineering standards, public entry points, example configuration,
-   diagnostic limitation and accepted ADR. You MUST NOT bulk-read unrelated
-   guides merely because they exist.
-4. You MUST use repository-local checks and MUST NOT claim an unavailable or
-   unexecuted check passed.
+### Triage labels
 
-If implementation, types, tests, artifact contracts and documented measurement
-meaning disagree, you MUST NOT silently pick one. Correct an obvious local
-defect or propose a superseding ADR. Ordinary ambiguity follows CONTRIBUTING.
+Use the default Matt Pocock label mapping. See [triage labels](docs/agents/triage-labels.md).
+
+### Domain docs
+
+Single context with a root glossary and ADRs in `docs/decisions/`. See [domain docs](docs/agents/domain.md).
 
 ## Repository responsibility
 
@@ -46,18 +38,6 @@ performance verdicts.
 - The intended comparable execution environment is a declared native Linux
   worker representing the chosen laptop profile. Linux CI proves correctness,
   not performance equivalence.
-
-## Shape of work
-
-- Each task and pull request MUST deliver one coherent, independently
-  reviewable browser-runner outcome.
-- Measurement semantics, diagnostic collectors, dependency/browser updates and
-  broad cleanup MUST stay separate unless inseparable for correctness.
-- Scope, assumptions, browser/environment requirements, timing effects,
-  artifact compatibility, affected consumers and verification evidence MUST be
-  explicit.
-- Prefer an end-to-end journey-to-artifact path over speculative frameworks or
-  unused collectors.
 
 ## Browser and implementation rules
 
@@ -80,8 +60,7 @@ Follow the engineering standards and relevant README sections.
 ## Quality and documentation
 
 - Test observable browser, lifecycle, serialization, diagnostic and artifact
-  behavior at the lowest boundary that proves it. Defect fixes SHOULD begin
-  with a failing regression test.
+  behavior at the lowest boundary that proves it.
 - Tests MUST use deterministic loopback fixtures and MUST NOT assert fixture
   latency as a performance baseline.
 - Comments SHOULD explain measurement, browser-lifecycle, security or resource
@@ -90,7 +69,9 @@ Follow the engineering standards and relevant README sections.
 - Types, configuration, examples, tests, exports and documentation change
   together.
 
-## Completion
+## Verification
 
-The canonical required checks and completion-report format are defined in
-[CONTRIBUTING.md](CONTRIBUTING.md). Follow them after every work item.
+Run `make verify` and the applicable additional checks documented in
+[CONTRIBUTING.md](CONTRIBUTING.md#verification-and-constrained-environments).
+Use the [documentation map](docs/README.md) to find affected standards, operational
+guides and decisions. Report checks as passed, failed or unavailable.

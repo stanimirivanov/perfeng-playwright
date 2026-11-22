@@ -155,7 +155,6 @@ speculative collector abstractions.
 - Test semantic success and stale/missing completion, lifecycle modes, invalid configurations,
   serialization, timeouts, partial/data-loss evidence, resource cleanup, size limits, output
   collision and rollback.
-- Defect fixes SHOULD begin with a failing regression test.
 - Tests MUST be isolated from external targets, credentials, user browser profiles and machine
   state. Wall-clock/browser scheduling may be asserted only with tolerant functional invariants,
   never as benchmark values.

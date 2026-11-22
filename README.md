@@ -39,8 +39,8 @@ on domain types directly instead of importing through those façades.
 
 ## Development
 
-Contributor workflow and repository policy are defined in
-[CONTRIBUTING.md](CONTRIBUTING.md). Browser-runner design and verification rules are in the
+See [AGENTS.md](AGENTS.md) for the agent workflow and
+[CONTRIBUTING.md](CONTRIBUTING.md) for repository requirements. Browser-runner design and verification rules are in the
 [engineering standards](docs/development/engineering-standards.md), the module model and dependency
 direction are in the [architecture guide](docs/development/architecture.md), and durable decisions
 are recorded in [ADRs](docs/decisions/README.md).
