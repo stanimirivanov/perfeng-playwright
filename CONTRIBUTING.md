@@ -6,8 +6,6 @@
 - Use MUST, SHOULD and MAY as defined below; lowercase wording is explanatory.
 - Proceed on documented, reversible assumptions and stop for choices that materially affect
   timing meaning, environment comparability, compatibility, security or external state.
-- Prepare requested changes without staging or committing, then print issue content for the
-  repository owner.
 - Run exact checks and report unavailable checks as not run—never as passed.
 - Use exact published milestone titles in the form `MNN — Outcome`.
 
@@ -23,7 +21,7 @@ Lowercase guidance does not silently create another normative level.
 
 | Concern                                                       | Canonical source                                                                                                          |
 | :------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------ |
-| Contributor workflow, issue timing, escalation and completion | This document                                                                                                             |
+| Contributor requirements and verification | This document                                                                                                             |
 | Concise contributor and agent entry point                     | [AGENTS.md](AGENTS.md)                                                                                                    |
 | Task-oriented documentation routing                           | [docs/README.md](docs/README.md)                                                                                          |
 | Coding harness and verification tiers                         | [docs/development/harness.md](docs/development/harness.md)                                                                |
@@ -42,8 +40,7 @@ rule.
 A contributor MUST inspect the branch and working tree and preserve unrelated changes; read
 affected types, browser lifecycle, collectors, fixtures, examples, exports and documentation;
 identify the smallest independently reviewable outcome; identify affected timing, environment,
-artifacts, compatibility, consumers and operations; and select the workflow under
-[Issue timing](#issue-timing).
+artifacts, compatibility, consumers and operations.
 
 A contributor MUST NOT discard, overwrite, reformat or incorporate unrelated work to obtain a
 clean diff. Destructive operations and external writes outside the task require explicit
@@ -71,18 +68,11 @@ work that can safely continue.
 
 ## Issue timing
 
-- When an issue number is supplied, follow its scope and milestone. A material mismatch follows the
-  escalation rules.
-- Without an issue number, prepare the smallest coherent requested change and print a complete
-  proposed issue in the completion report. The owner creates the issue and then creates or renames
-  the branch with its number.
-- Contributors acting for the owner MUST NOT stage, commit, push, create or modify issues, create
-  pull requests, run against non-loopback targets, publish packages or artifacts, create releases,
-  or change milestones unless explicitly requested.
-- Read-only investigation and loopback-only verification MAY occur before an issue exists.
-
-Creating or modifying GitHub records, packages, releases or stored artifacts and exercising an
-external target are externally visible writes and require explicit authority.
+Use the [issue tracker configuration](docs/agents/issue-tracker.md) and the
+applicable skill. Reuse a supplied issue and follow its scope and milestone.
+For issue or PR writes, verify the target repository and authorization first.
+Staging, committing, pushing, publishing, changing milestones and other
+external mutations require authorization.
 
 ## Milestones and required issue
 
@@ -144,18 +134,9 @@ or collectors for roadmap appearance.
 
 ## Development workflow
 
-1. Select the workflow defined in [Issue timing](#issue-timing).
-2. Prepare one focused change without staging, committing or pushing for the owner.
-3. Add or update deterministic loopback fixtures and browser tests.
-4. Implement the smallest coherent solution and update examples and docs.
-5. Format and run exact checks.
-6. Review the diff for secrets, generated churn, timing/environment changes, assumptions,
-   lock/package drift and unrelated edits.
-7. Print the canonical [completion report](#completion-report).
-8. The owner creates or confirms the issue and branch, may adjust the change, commits with `[#N]`,
-   pushes and opens the pull request.
-
-Do not store task-specific issue bodies, PR descriptions or handoff notes in the repository.
+Use the applicable `mattpocock/skills` workflow through [AGENTS.md](AGENTS.md).
+Use this guide for the repository's technical requirements, verification,
+issue and PR metadata, and authorization boundaries.
 
 ## External operations and destructive actions
 
@@ -207,8 +188,6 @@ and known limitations.
 
 ## Review checklist
 
-- [ ] MUST: The issue uses the required structure and exact milestone title.
-- [ ] MUST: The change is one coherent browser-runner outcome.
 - [ ] MUST: Semantic start/completion and browser-clock timing remain explicit.
 - [ ] MUST: Cold/warm lifecycle, warm-up and measured iterations retain meaning.
 - [ ] MUST: Environment identity and comparability claims are explicit.
@@ -222,7 +201,5 @@ and known limitations.
 
 ## Completion report
 
-After every work item, print the repository, exact milestone, proposed issue title, complete issue
-body, assumptions and limitations, verification outcomes distinguished as passed/failed/not run,
-and a suggested `[#N]` commit subject. When an issue exists, repeat or amend it so delivered scope
-is auditable. Printing the report does not publish external records.
+Report actual verification outcomes and any remaining limitations. Include the
+linked issue or PR when one exists. Follow the applicable skill for delivery.
