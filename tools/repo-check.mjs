@@ -240,7 +240,7 @@ function checkTemplates(root, violations) {
 }
 
 function checkAdrs(root, violations) {
-  const directory = join(root, 'docs/decisions');
+  const directory = join(root, 'docs/adr');
   if (!existsSync(directory)) return;
   const indexPath = join(directory, 'README.md');
   const index = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : '';

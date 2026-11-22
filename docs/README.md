@@ -7,6 +7,8 @@
 - Linux CI proves functional behavior; native Linux validation is required for Linux-specific filesystem and worker behavior, not as a performance baseline.
 - Update this map whenever a canonical guide moves or a recurring task lacks a route.
 
+Read the [repository glossary](../GLOSSARY.md) for domain terminology.
+
 ## Route by task
 
 | Task or changed area                      | Read first                                                                                                                                    | Verify or consult as needed                                   |
@@ -18,8 +20,8 @@
 | Contract snapshots or package rollback    | [Contract distribution](development/contract-distribution.md)                                                                                 | `make contracts-update-check`, `make contracts-package-check` |
 | Native Worker presence and protocol       | [Native worker presence](native-worker-presence.md)                                                                                           | Vendored contract lock and focused protocol tests             |
 | Native Worker v2 local lifecycle          | [One-shot execution](native-worker-presence.md#execute-one-assigned-attempt), [architecture](development/architecture.md#lifecycle-and-state) | Reviewed v2 recipe, attempt and local artifact tests          |
-| Immutable artifact publication            | [ADR-0001](decisions/0001-publish-artifacts-with-receipt-last-commitment.md)                                                                  | Filesystem collision and recovery tests on Linux              |
-| Durable decisions                         | [ADR index](decisions/README.md)                                                                                                              | Architecture and affected consumer documentation              |
+| Immutable artifact publication            | [ADR-0001](adr/0001-publish-artifacts-with-receipt-last-commitment.md)                                                                        | Filesystem collision and recovery tests on Linux              |
+| Durable decisions                         | [ADR index](adr/README.md)                                                                                                                    | Architecture and affected consumer documentation              |
 
 ## Keeping this map useful
 
