@@ -139,7 +139,7 @@ and preserve any local evidence before an operator explicitly clears the marker 
 attempt directory. If availability withdrawal failed, also verify server presence has become
 `UNAVAILABLE` or expired. The marker is a local single-process exclusion mechanism, not proof of
 remote lease state. It cannot prevent unrelated users or processes with write access to the spool
-from changing files. See [ADR-0012](decisions/0012-run-one-native-attempt-with-manual-recovery.md).
+from changing files. See [ADR-0012](adr/0012-run-one-native-attempt-with-manual-recovery.md).
 
 ## Current boundary
 
@@ -213,7 +213,7 @@ fresh signed delivery material for the same reservation; the worker uses only th
 Conflict, lost authority, cancellation, server pacing or a second failure stops publication
 without sending object bytes. A concurrent lease renewal can make
 the frozen revision stale; an unresolved grant does not prove no reservation was created. See
-[ADR-0010](decisions/0010-retry-exact-native-upload-grant-once.md).
+[ADR-0010](adr/0010-retry-exact-native-upload-grant-once.md).
 
 The separate artifact-transfer step opens the declared local file as a file-backed Blob, verifies
 its size and SHA-256 before network access, and sends it through one bounded presigned `PUT`. Node
@@ -241,7 +241,7 @@ unresolved, the object stays non-authoritative and attempt-scoped. A lease renew
 registration attempts may cause the server to reject the frozen revision, so an unresolved outcome
 must not be treated as proof that the first registration failed. The worker receives no permission
 to inspect or delete that object; see
-[ADR-0009](decisions/0009-retry-exact-native-artifact-registration-once.md).
+[ADR-0009](adr/0009-retry-exact-native-artifact-registration-once.md).
 
 The raw-result builder constructs deterministic `raw-result/v2` bytes only after every required
 non-manifest artifact has a lease-fenced registered reference. It derives Run, test, workload,
@@ -300,7 +300,7 @@ control plane. The receipt has a 64 KiB local bound. The separate semantic loade
 committed bytes, compares their size and digest, then validates the complete baseline payload,
 iteration metric sets, recipe identity, runner version and lease timeline before returning upload
 inputs. The worker rejects measurement plans above the 32 MiB local parser bound before execution;
-see [ADR-0003](decisions/0003-bound-native-measurement-parsing.md). Neither check proves that an
+see [ADR-0003](adr/0003-bound-native-measurement-parsing.md). Neither check proves that an
 untrusted local writer told the truth. Publication still belongs to a later lifecycle coordinator,
 and the server remains the authority for registered evidence.
 
@@ -331,7 +331,7 @@ finalizes. It renews immediately, then at the server-directed interval, exposes 
 revision, and permits only forward phase transitions. Server cancellation, lost authority, expiry,
 shutdown or a renewal failure aborts the operation and waits for it to settle. It does not claim
 release or terminal completion, automatically retry renewal, or remove evidence; see
-[ADR-0004](decisions/0004-fail-closed-native-lease-supervision.md). The one-shot command supplies
+[ADR-0004](adr/0004-fail-closed-native-lease-supervision.md). The one-shot command supplies
 bounded acquisition policy but not automatic restart recovery.
 
 An internal v2 attempt coordinator now composes preparation, runner execution, measurement
@@ -339,18 +339,18 @@ validation, measurement-before-manifest publication and terminal reporting under
 It reports fixed stage-specific failure codes only while authority remains active; local error
 details are never copied into a terminal message. A cancelled or lost attempt makes no terminal
 claim. Terminal uncertainty and partial evidence are retained for explicit recovery; see
-[ADR-0005](decisions/0005-report-native-attempt-terminal-within-lease-supervision.md).
+[ADR-0005](adr/0005-report-native-attempt-terminal-within-lease-supervision.md).
 An immediately retryable terminal response without `Retry-After` gets one identical retry under
 the same supervised lease. A conflict, lost authority, server-paced retry or second failure remains
 an explicit recovery case; see
-[ADR-0008](decisions/0008-retry-exact-native-terminal-claims-once.md).
+[ADR-0008](adr/0008-retry-exact-native-terminal-claims-once.md).
 
 After server cancellation or worker shutdown, the supervisor offers release only once abort-aware
 work has settled and the lease still has time before its expiry or `stopBy` deadline. The coordinator
 uses the latest accepted revision and an independent bounded request signal. Lost authority,
 uncertain renewal and failed process termination never claim release. Automatic restart recovery
 and an unattended acquisition loop remain unfinished; see
-[ADR-0006](decisions/0006-release-stopped-native-attempts-within-proven-authority.md).
+[ADR-0006](adr/0006-release-stopped-native-attempts-within-proven-authority.md).
 
 ## Inspect retained attempt state
 
@@ -361,7 +361,7 @@ no evidence bytes and needs no worker token. `hasRetainedState` means operator r
 it does not mean the files are valid or the lease can be resumed. The command neither deletes
 state nor contacts the control plane. A concurrent worker can change the spool after inspection,
 so this is not an acquisition lock. See
-[ADR-0007](decisions/0007-inspect-retained-native-attempts-without-resuming.md).
+[ADR-0007](adr/0007-inspect-retained-native-attempts-without-resuming.md).
 
 For one attempt listed by `spool-status`, verify the runner-committed local measurement bytes:
 

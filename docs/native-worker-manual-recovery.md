@@ -77,4 +77,4 @@ Nonce files coordinate cooperating invocations sharing the spool, not machines o
 
 Recovery does not normalize results, report terminal success, delete remote objects, change measurements or qualify a laptop. Linux tests exercise disposable filesystems and mocked protocol boundaries; `make validate` covers repository acceptance. Representative Linux/Chromium and live control-plane recovery remain the separate M03 completion gate.
 
-See [ADR-0013](decisions/0013-preserve-native-spool-in-explicit-manual-recovery.md) and [presence and execution](native-worker-presence.md).
+See [ADR-0013](adr/0013-preserve-native-spool-in-explicit-manual-recovery.md) and [presence and execution](native-worker-presence.md).

@@ -43,7 +43,7 @@ See [AGENTS.md](AGENTS.md) for the agent workflow and
 [CONTRIBUTING.md](CONTRIBUTING.md) for repository requirements. Browser-runner design and verification rules are in the
 [engineering standards](docs/development/engineering-standards.md), the module model and dependency
 direction are in the [architecture guide](docs/development/architecture.md), and durable decisions
-are recorded in [ADRs](docs/decisions/README.md).
+are recorded in [ADRs](docs/adr/README.md).
 
 Use the [documentation map](docs/README.md) to route work. The
 [coding harness](docs/development/harness.md) defines feedback tiers and the
